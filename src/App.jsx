@@ -139,8 +139,10 @@ export default function App() {
 
   useEffect(() => {
     async function load() {
-      const { data: h } = await supabase.from('habits').select('*').eq('user_id', USER_ID)
-      const { data: c } = await supabase.from('completions').select('*').eq('user_id', USER_ID)
+      const { data: h, error: e1 } = await supabase.from('habits').select('*').eq('user_id', USER_ID)
+      const { data: c, error: e2 } = await supabase.from('completions').select('*').eq('user_id', USER_ID)
+      if (e1) console.error('habits error:', e1)
+      if (e2) console.error('completions error:', e2)
       if (h) setHabits(h)
       if (c) {
         const map = {}
@@ -160,7 +162,8 @@ export default function App() {
     if (!name) return
     const id = Date.now().toString()
     const habit = { id, name, created_at: today, user_id: USER_ID }
-    await supabase.from('habits').insert(habit)
+    const { error } = await supabase.from('habits').insert(habit)
+    if (error) { console.error('insert error:', error); alert('Error: ' + error.message); return }
     setHabits(h => [...h, habit])
     setNewHabit('')
   }
