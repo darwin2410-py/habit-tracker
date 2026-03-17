@@ -206,6 +206,8 @@ export default function App() {
   const [newHabit, setNewHabit] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState('daily')
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
   const inputRef = useRef(null)
   const today = getTodayKey()
   const last7 = getLast7Days()
@@ -240,6 +242,15 @@ export default function App() {
     setHabits(h => [...h, habit])
     setNewHabit('')
     inputRef.current?.focus()
+  }
+
+  async function renameHabit(id) {
+    const name = editName.trim()
+    if (!name) { setEditingId(null); return }
+    const { error } = await supabase.from('habits').update({ name }).eq('id', id)
+    if (error) { console.error('rename error:', error); return }
+    setHabits(h => h.map(x => x.id === id ? { ...x, name } : x))
+    setEditingId(null)
   }
 
   async function removeHabit(id) {
@@ -369,12 +380,29 @@ export default function App() {
                       onMouseEnter={e => { if (!done) e.currentTarget.style.borderColor = T.sage }}
                       onMouseLeave={e => { if (!done) e.currentTarget.style.borderColor = T.inkFaint }}
                     >{done ? '✓' : ''}</button>
-                    <span style={{
-                      fontWeight:600, fontSize:15, color: done ? T.inkMuted : T.ink,
-                      textDecoration: done ? 'line-through' : 'none',
-                      textDecorationColor: T.inkFaint,
-                      transition:'all 0.3s',
-                    }}>{habit.name}</span>
+                    {editingId === habit.id ? (
+                      <input value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameHabit(habit.id); if (e.key === 'Escape') setEditingId(null) }}
+                        onBlur={() => renameHabit(habit.id)}
+                        autoFocus
+                        style={{
+                          fontWeight:600, fontSize:15, color:T.ink, border:'none', outline:'none',
+                          borderBottom:`1.5px solid ${T.accent}`, background:'transparent',
+                          fontFamily:T.sans, padding:'0 0 2px', width:160,
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={() => { setEditingId(habit.id); setEditName(habit.name) }}
+                        title="Double-click to rename"
+                        style={{
+                          fontWeight:600, fontSize:15, color: done ? T.inkMuted : T.ink,
+                          textDecoration: done ? 'line-through' : 'none',
+                          textDecorationColor: T.inkFaint,
+                          transition:'all 0.3s', cursor:'text',
+                        }}>{habit.name}</span>
+                    )}
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     {streak > 0 && (
