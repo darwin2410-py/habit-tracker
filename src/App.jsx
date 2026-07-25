@@ -8,6 +8,7 @@ import ConfirmDialog from './components/ConfirmDialog'
 import MonthlyView from './components/MonthlyView'
 import HabitCard from './components/HabitCard'
 import FrequencyPicker from './components/FrequencyPicker'
+import CategoryPicker from './components/CategoryPicker'
 
 const USER_ID = 'user_default'
 
@@ -18,6 +19,10 @@ export default function App() {
   const [newHabit, setNewHabit] = useState('')
   const [frequency, setFrequency] = useState({ type: 'daily' })
   const [showFreqPicker, setShowFreqPicker] = useState(false)
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false)
+  const [categoryId, setCategoryId] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [categoryFilter, setCategoryFilter] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState('daily')
   const [editingId, setEditingId] = useState(null)
@@ -34,11 +39,16 @@ export default function App() {
 
   useEffect(() => {
     async function load() {
-      const { data: h, error: e1 } = await supabase.from('habits').select('*').eq('user_id', USER_ID)
-      const { data: c, error: e2 } = await supabase.from('completions').select('*').eq('user_id', USER_ID)
+      const [{ data: h, error: e1 }, { data: c, error: e2 }, { data: cats, error: e3 }] = await Promise.all([
+        supabase.from('habits').select('*').eq('user_id', USER_ID),
+        supabase.from('completions').select('*').eq('user_id', USER_ID),
+        supabase.from('categories').select('*').eq('user_id', USER_ID)
+      ])
       if (e1) console.error('habits error:', e1)
       if (e2) console.error('completions error:', e2)
+      if (e3) console.error('categories error:', e3)
       if (h) setHabits(h)
+      if (cats) setCategories(cats)
       if (c) {
         const map = {}
         c.forEach(({ habit_id, date_key }) => {
@@ -56,13 +66,15 @@ export default function App() {
     const name = newHabit.trim()
     if (!name) return
     const id = Date.now().toString()
-    const habit = { id, name, created_at: today, user_id: USER_ID, frequency }
+    const habit = { id, name, created_at: today, user_id: USER_ID, frequency, category_id: categoryId }
     const { error } = await supabase.from('habits').insert(habit)
     if (error) { console.error('insert error:', error); showToast('Failed to add habit', 'error'); return }
     setHabits(h => [...h, habit])
     setNewHabit('')
     setFrequency({ type: 'daily' })
+    setCategoryId(null)
     setShowFreqPicker(false)
+    setShowCategoryPicker(false)
     inputRef.current?.focus()
   }
 
@@ -105,6 +117,15 @@ export default function App() {
         setCompletions(c => ({ ...c, [habitId]: { ...(c[habitId]||{}), [dateKey]: false } }))
       }
     }
+  }
+
+  async function createCategory(name, color) {
+    const id = 'cat_' + Date.now().toString()
+    const cat = { id, name, color, user_id: USER_ID }
+    const { error } = await supabase.from('categories').insert(cat)
+    if (error) { console.error('category insert error:', error); showToast('Failed to create category', 'error'); return }
+    setCategories(c => [...c, cat])
+    setCategoryId(id)
   }
 
   function startEdit(habitId, habitName) {
@@ -194,7 +215,31 @@ export default function App() {
         )}
 
         {/* Habits List */}
-        <div style={{ marginBottom:24 }}>
+        {(categories.length > 0 || categoryFilter) && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, animation: 'fadeUp 0.4s ease both' }}>
+            <button onClick={() => setCategoryFilter(null)} style={{
+              padding: '4px 12px', borderRadius: 99, border: '1.5px solid',
+              borderColor: !categoryFilter ? T.accent : T.creamDark,
+              background: !categoryFilter ? T.accent : 'transparent',
+              color: !categoryFilter ? '#fff' : T.inkSoft,
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
+            }}>All</button>
+            {categories.map(c => {
+              const active = categoryFilter === c.id
+              return (
+                <button key={c.id} onClick={() => setCategoryFilter(active ? null : c.id)} style={{
+                  padding: '4px 12px', borderRadius: 99, border: '1.5px solid',
+                  borderColor: active ? c.color : T.creamDark,
+                  background: active ? c.color : 'transparent',
+                  color: active ? '#fff' : T.inkSoft,
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
+                  transition: 'all 0.2s',
+                }}>{c.name}</button>
+              )
+            })}
+          </div>
+        )}
+        <div style={{ marginBottom: 24 }}>
           {habits.length === 0 && (
             <div style={{
               textAlign:'center', color:T.inkMuted, padding:'48px 20px', fontSize:15,
@@ -204,12 +249,15 @@ export default function App() {
             </div>
           )}
 
-          {habits.map((habit, idx) => (
+          {habits
+          .filter(h => !categoryFilter || h.category_id === categoryFilter)
+          .map((habit, idx) => (
             <HabitCard key={habit.id} habit={habit} idx={idx} completions={completions}
               today={today} last7={last7} editingId={editingId} editName={editName}
               setEditName={setEditName} onToggle={toggle} onStartEdit={startEdit}
               onRename={renameHabit} onCancelEdit={() => setEditingId(null)}
-              onDelete={() => setDeleteTarget(habit)} />
+              onDelete={() => setDeleteTarget(habit)}
+              category={categories.find(c => c.id === habit.category_id) || null} />
           ))}
         </div>
 
@@ -250,6 +298,24 @@ export default function App() {
           >{frequency.type === 'daily' ? 'Every day' : `Repeats: ${frequency.type}`} <span style={{ fontSize: 10 }}>{showFreqPicker ? '\u25B2' : '\u25BC'}</span></button>
           {showFreqPicker && (
             <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} style={{ marginTop: 8 }} />
+          )}
+          <button onClick={() => setShowCategoryPicker(p => !p)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 12, color: T.inkMuted, fontFamily: T.sans, fontWeight: 500,
+            padding: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'color 0.2s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.color = T.accent}
+            onMouseLeave={e => e.currentTarget.style.color = T.inkMuted}
+          >{categoryId ? categories.find(c => c.id === categoryId)?.name || 'Category' : 'Add category'} <span style={{ fontSize: 10 }}>{showCategoryPicker ? '\u25B2' : '\u25BC'}</span></button>
+          {showCategoryPicker && (
+            <CategoryPicker
+              categories={categories}
+              selectedId={categoryId}
+              onChange={id => { setCategoryId(id); if (newHabit) inputRef.current?.focus() }}
+              onCreate={createCategory}
+              style={{ marginTop: 8 }}
+            />
           )}
         </div>
 

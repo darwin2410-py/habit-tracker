@@ -6,7 +6,8 @@ import { useLongPress } from '../hooks/useLongPress'
 export default function HabitCard({
   habit, idx, completions, today, last7,
   editingId, editName, setEditName,
-  onToggle, onStartEdit, onRename, onCancelEdit, onDelete
+  onToggle, onStartEdit, onRename, onCancelEdit, onDelete,
+  category
 }) {
   const streak = calcStreak(habit.id, completions, habit)
   const bestStreak = calcBestStreak(habit.id, completions, habit)
@@ -88,6 +89,13 @@ export default function HabitCard({
               fontSize: 12, background: T.sageLight, color: T.sage, borderRadius: 99,
               padding: '3px 10px', fontWeight: 700, letterSpacing: '-0.2px',
             }} title="Best streak">{bestStreak}d best</span>
+          )}
+          {category && (
+            <span style={{
+              fontSize: 11, background: category.color + '20',
+              color: category.color, borderRadius: 99,
+              padding: '2px 8px', fontWeight: 600, letterSpacing: '-0.1px',
+            }}>{category.name}</span>
           )}
           <button onClick={() => onStartEdit(habit.id, habit.name)} style={{
             background: 'none', border: 'none', color: T.inkFaint, cursor: 'pointer',
