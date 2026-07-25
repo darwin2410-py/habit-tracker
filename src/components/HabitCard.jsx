@@ -99,13 +99,13 @@ export default function HabitCard({
             <span style={{
               fontSize: 12, background: T.amberLight, color: T.amber, borderRadius: 99,
               padding: '3px 10px', fontWeight: 700, letterSpacing: '-0.2px',
-            }}>{streak}d</span>
+            }}>{'\uD83D\uDD25'} {streak}d</span>
           )}
           {bestStreak > 0 && bestStreak > streak && (
             <span style={{
               fontSize: 12, background: T.sageLight, color: T.sage, borderRadius: 99,
               padding: '3px 10px', fontWeight: 700, letterSpacing: '-0.2px',
-            }} title="Best streak">{bestStreak}d best</span>
+            }} title="Best streak">{'\uD83C\uDFC6'} {bestStreak}d</span>
           )}
           {!isEditing && category && (
             <span style={{
