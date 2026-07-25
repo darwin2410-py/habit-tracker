@@ -7,6 +7,7 @@ import Toast from './components/Toast'
 import ConfirmDialog from './components/ConfirmDialog'
 import MonthlyView from './components/MonthlyView'
 import HabitCard from './components/HabitCard'
+import FrequencyPicker from './components/FrequencyPicker'
 
 const USER_ID = 'user_default'
 
@@ -15,6 +16,8 @@ export default function App() {
   const [habits, setHabits] = useState([])
   const [completions, setCompletions] = useState({})
   const [newHabit, setNewHabit] = useState('')
+  const [frequency, setFrequency] = useState({ type: 'daily' })
+  const [showFreqPicker, setShowFreqPicker] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState('daily')
   const [editingId, setEditingId] = useState(null)
@@ -53,11 +56,13 @@ export default function App() {
     const name = newHabit.trim()
     if (!name) return
     const id = Date.now().toString()
-    const habit = { id, name, created_at: today, user_id: USER_ID }
+    const habit = { id, name, created_at: today, user_id: USER_ID, frequency }
     const { error } = await supabase.from('habits').insert(habit)
     if (error) { console.error('insert error:', error); showToast('Failed to add habit', 'error'); return }
     setHabits(h => [...h, habit])
     setNewHabit('')
+    setFrequency({ type: 'daily' })
+    setShowFreqPicker(false)
     inputRef.current?.focus()
   }
 
@@ -230,6 +235,22 @@ export default function App() {
             onMouseEnter={e => { e.currentTarget.style.background = T.accentGlow; e.currentTarget.style.transform = 'scale(1.05)' }}
             onMouseLeave={e => { e.currentTarget.style.background = T.accent; e.currentTarget.style.transform = 'scale(1)' }}
           >+</button>
+        </div>
+
+        {/* Frequency Picker */}
+        <div style={{ marginTop: 10, animation: 'fadeUp 0.5s ease 0.35s both' }}>
+          <button onClick={() => setShowFreqPicker(p => !p)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 12, color: T.inkMuted, fontFamily: T.sans, fontWeight: 500,
+            padding: 0, display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'color 0.2s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.color = T.accent}
+            onMouseLeave={e => e.currentTarget.style.color = T.inkMuted}
+          >{frequency.type === 'daily' ? 'Every day' : `Repeats: ${frequency.type}`} <span style={{ fontSize: 10 }}>{showFreqPicker ? '\u25B2' : '\u25BC'}</span></button>
+          {showFreqPicker && (
+            <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} style={{ marginTop: 8 }} />
+          )}
         </div>
 
         {/* Footer */}

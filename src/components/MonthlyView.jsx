@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { T } from '../theme'
-import { getTodayKey, MONTHS, DAY_HEADERS, getDaysInMonth, getFirstDay, calcBestStreak } from '../utils'
+import { getTodayKey, MONTHS, DAY_HEADERS, getDaysInMonth, getFirstDay, calcBestStreak, isScheduled } from '../utils'
 
 export default function MonthlyView({ habits, completions, onToggle, onBack }) {
   const now = new Date()
@@ -26,19 +26,20 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
   for (let i = 0; i < firstDay; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
 
-  const completedDays = cells.filter(d => {
+const completedDays = cells.filter(d => {
     if (!d) return false
     const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     return completions[selectedHabit]?.[key]
   }).length
 
+  const selHabit = habits.find(h => h.id === selectedHabit)
   const totalDays = cells.filter(Boolean).filter(d => {
     const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    return key <= today
+    return key <= today && isScheduled(selHabit || {}, key)
   }).length
 
   const rate = totalDays > 0 ? Math.round(completedDays / totalDays * 100) : 0
-  const bestStreak = calcBestStreak(selectedHabit, completions)
+  const bestStreak = calcBestStreak(selectedHabit, completions, selHabit)
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: T.sans, padding: '32px 20px 40px' }}>
@@ -145,17 +146,20 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
                     const done = completions[selectedHabit]?.[key]
                     const isFuture = key > today
                     const isToday = key === today
+                    const scheduled = selHabit ? isScheduled(selHabit, key) : true
+                    const canClick = !isFuture && scheduled
                     return (
                       <div key={key}
-                        onClick={() => !isFuture && onToggle(selectedHabit, key)}
+                        onClick={() => canClick && onToggle(selectedHabit, key)}
                         style={{
                           aspectRatio: '1', borderRadius: 8, display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
                           fontSize: 12, fontWeight: isToday ? 800 : 500, fontFamily: T.sans,
-                          cursor: isFuture ? 'default' : 'pointer', transition: 'all 0.2s',
-                          background: done ? T.sage : isFuture ? 'transparent' : T.cream,
-                          color: done ? '#fff' : isFuture ? T.inkFaint : isToday ? T.accent : T.inkSoft,
-                          border: isToday ? `2px solid ${T.accent}` : '2px solid transparent',
+                          cursor: canClick ? 'pointer' : 'default', transition: 'all 0.2s',
+                          background: done ? T.sage : isFuture ? 'transparent' : !scheduled ? 'transparent' : T.cream,
+                          color: done ? '#fff' : isFuture ? T.inkFaint : isToday ? T.accent : !scheduled ? T.inkFaint : T.inkSoft,
+                          border: isToday ? `2px solid ${T.accent}` : !scheduled ? `1px solid ${T.inkFaint}` : '2px solid transparent',
+                          opacity: !scheduled && !done ? 0.3 : 1,
                         }}>{d}</div>
                     )
                   })}

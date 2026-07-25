@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { T } from '../theme'
-import { getDayLabel, calcStreak, calcBestStreak } from '../utils'
+import { getDayLabel, calcStreak, calcBestStreak, isScheduled } from '../utils'
 import { useLongPress } from '../hooks/useLongPress'
 
 export default function HabitCard({
@@ -8,8 +8,9 @@ export default function HabitCard({
   editingId, editName, setEditName,
   onToggle, onStartEdit, onRename, onCancelEdit, onDelete
 }) {
-  const streak = calcStreak(habit.id, completions)
-  const bestStreak = calcBestStreak(habit.id, completions)
+  const streak = calcStreak(habit.id, completions, habit)
+  const bestStreak = calcBestStreak(habit.id, completions, habit)
+  const scheduled = isScheduled(habit, today)
   const done = completions[habit.id]?.[today]
 
   const longPress = useLongPress(
@@ -29,16 +30,17 @@ export default function HabitCard({
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-          <button onClick={() => onToggle(habit.id, today)} style={{
+<button onClick={() => scheduled && onToggle(habit.id, today)} style={{
             width: 26, height: 26, borderRadius: 7, border: '2px solid',
-            borderColor: done ? T.sage : T.inkFaint,
+            borderColor: done ? T.sage : scheduled ? T.inkFaint : T.creamDark,
             background: done ? T.sage : 'transparent',
-            color: '#fff', fontSize: 13, cursor: 'pointer',
+            color: done ? '#fff' : T.inkFaint, fontSize: 13, cursor: scheduled ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             transition: 'all 0.25s',
             animation: done ? 'checkPop 0.3s ease' : 'none',
+            opacity: scheduled ? 1 : 0.4,
           }}
-            onMouseEnter={e => { if (!done) e.currentTarget.style.borderColor = T.sage }}
+            onMouseEnter={e => { if (!done && scheduled) e.currentTarget.style.borderColor = T.sage }}
             onMouseLeave={e => { if (!done) e.currentTarget.style.borderColor = T.inkFaint }}
           >{done ? '\u2713' : ''}</button>
 
@@ -65,7 +67,12 @@ export default function HabitCard({
                 textDecorationColor: T.inkFaint,
                 transition: 'all 0.3s', cursor: 'text',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{habit.name}</span>
+              }}>{habit.name}{!scheduled && (
+                <span style={{
+                  fontSize: 10, color: T.inkMuted, marginLeft: 6,
+                  fontWeight: 400, fontStyle: 'italic', verticalAlign: 'middle',
+                }}>Rest day</span>
+              )}</span>
           )}
         </div>
 
@@ -102,24 +109,26 @@ export default function HabitCard({
       </div>
 
       <div style={{ display: 'flex', gap: 6 }}>
-        {last7.map(d => {
+{last7.map(d => {
           const dayDone = completions[habit.id]?.[d]
           const isToday = d === today
+          const dayScheduled = isScheduled(habit, d)
+          const canToggle = dayScheduled
           return (
-            <div key={d} style={{ flex: 1, textAlign: 'center' }}>
+            <div key={d} style={{ flex: 1, textAlign: 'center', opacity: dayScheduled ? 1 : 0.3 }}>
               <div style={{
                 fontSize: 10, color: isToday ? T.accent : T.inkMuted, marginBottom: 4,
                 fontWeight: isToday ? 700 : 500
               }}>{getDayLabel(d)}</div>
-              <div onClick={() => onToggle(habit.id, d)} style={{
+              <div onClick={() => canToggle && onToggle(habit.id, d)} style={{
                 width: '100%', aspectRatio: '1', borderRadius: 6,
-                background: dayDone ? T.sage : T.cream,
-                cursor: 'pointer', transition: 'all 0.2s',
-                border: isToday ? `1.5px solid ${T.accent}` : '1.5px solid transparent',
+                background: dayDone ? T.sage : canToggle ? T.cream : 'transparent',
+                cursor: canToggle ? 'pointer' : 'default', transition: 'all 0.2s',
+                border: isToday ? `1.5px solid ${T.accent}` : !canToggle ? `1px solid ${T.inkFaint}` : '1.5px solid transparent',
                 animation: dayDone ? 'scaleIn 0.2s ease' : 'none',
               }}
-                onMouseEnter={e => { if (!dayDone) e.currentTarget.style.background = T.sageLight }}
-                onMouseLeave={e => { if (!dayDone) e.currentTarget.style.background = T.cream }}
+                onMouseEnter={e => { if (!dayDone && canToggle) e.currentTarget.style.background = T.sageLight }}
+                onMouseLeave={e => { if (!dayDone && canToggle) e.currentTarget.style.background = T.cream }}
               />
             </div>
           )

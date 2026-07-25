@@ -14,27 +14,44 @@ export function getDayLabel(dateStr) {
   return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(dateStr + 'T00:00:00').getDay()]
 }
 
-export function calcStreak(habitId, completions) {
+export function isScheduled(habit, dateKey) {
+  const freq = habit.frequency || { type: 'daily' }
+  if (!freq || freq.type === 'daily') return true
+  const day = new Date(dateKey + 'T00:00:00').getDay()
+  return (freq.days || []).includes(day)
+}
+
+export function calcStreak(habitId, completions, habit) {
   let streak = 0
   const today = new Date()
   const todayKey = today.toISOString().split('T')[0]
-  const startFromToday = completions[habitId]?.[todayKey]
+  const startFromToday = completions[habitId]?.[todayKey] && isScheduled(habit || {}, todayKey)
   for (let i = startFromToday ? 0 : 1; i < 365; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    if (completions[habitId]?.[d.toISOString().split('T')[0]]) streak++
+    const key = d.toISOString().split('T')[0]
+    if (!isScheduled(habit || {}, key)) continue
+    if (completions[habitId]?.[key]) streak++
     else break
   }
   return streak
 }
 
-export function calcBestStreak(habitId, completions) {
-  const dates = Object.keys(completions[habitId] || {}).sort()
+export function calcBestStreak(habitId, completions, habit) {
+  const dates = Object.keys(completions[habitId] || {})
+    .filter(k => isScheduled(habit || {}, k))
+    .sort()
   if (dates.length === 0) return 0
   let best = 1
   let current = 1
   for (let i = 1; i < dates.length; i++) {
-    const diff = (new Date(dates[i]) - new Date(dates[i - 1])) / 86400000
+    const d1 = new Date(dates[i])
+    const d2 = new Date(dates[i - 1])
+    const rawDiff = (d1 - d2) / 86400000
+    let diff = rawDiff
+    for (let j = new Date(d2.getTime() + 86400000); j < d1; j = new Date(j.getTime() + 86400000)) {
+      if (isScheduled(habit || {}, j.toISOString().split('T')[0])) { diff = 1; break }
+    }
     if (diff === 1) {
       current++
       best = Math.max(best, current)
