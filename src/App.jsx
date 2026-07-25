@@ -27,6 +27,8 @@ export default function App() {
   const [view, setView] = useState('daily')
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
+  const [editingFreq, setEditingFreq] = useState(null)
+  const [editingCatId, setEditingCatId] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [toast, setToast] = useState(null)
   const inputRef = useRef(null)
@@ -81,9 +83,15 @@ export default function App() {
   async function renameHabit(id) {
     const name = editName.trim()
     if (!name) { setEditingId(null); return }
-    const { error } = await supabase.from('habits').update({ name }).eq('id', id)
-    if (error) { console.error('rename error:', error); showToast('Failed to rename', 'error'); return }
-    setHabits(h => h.map(x => x.id === id ? { ...x, name } : x))
+    const updates = { name }
+    const h = habits.find(x => x.id === id)
+    const freqChanged = JSON.stringify(editingFreq) !== JSON.stringify(h?.frequency || { type: 'daily' })
+    const catChanged = editingCatId !== (h?.category_id || null)
+    if (freqChanged) updates.frequency = editingFreq
+    if (catChanged) updates.category_id = editingCatId
+    const { error } = await supabase.from('habits').update(updates).eq('id', id)
+    if (error) { console.error('rename error:', error); showToast('Failed to save', 'error'); return }
+    setHabits(hh => hh.map(x => x.id === id ? { ...x, ...updates } : x))
     setEditingId(null)
   }
 
@@ -128,9 +136,11 @@ export default function App() {
     setCategoryId(id)
   }
 
-  function startEdit(habitId, habitName) {
+  function startEdit(habitId, habitName, freq, catId) {
     setEditingId(habitId)
     setEditName(habitName)
+    setEditingFreq(freq || { type: 'daily' })
+    setEditingCatId(catId || null)
   }
 
   const todayTotal = habits.filter(h => completions[h.id]?.[today]).length
@@ -253,11 +263,15 @@ export default function App() {
           .filter(h => !categoryFilter || h.category_id === categoryFilter)
           .map((habit, idx) => (
             <HabitCard key={habit.id} habit={habit} idx={idx} completions={completions}
-              today={today} last7={last7} editingId={editingId} editName={editName}
-              setEditName={setEditName} onToggle={toggle} onStartEdit={startEdit}
+              today={today} last7={last7}
+              editingId={editingId} editName={editName} setEditName={setEditName}
+              editingFreq={editingFreq} setEditingFreq={setEditingFreq}
+              editingCatId={editingCatId} setEditingCatId={setEditingCatId}
+              onToggle={toggle} onStartEdit={startEdit}
               onRename={renameHabit} onCancelEdit={() => setEditingId(null)}
               onDelete={() => setDeleteTarget(habit)}
-              category={categories.find(c => c.id === habit.category_id) || null} />
+              category={categories.find(c => c.id === habit.category_id) || null}
+              categories={categories} />
           ))}
         </div>
 
