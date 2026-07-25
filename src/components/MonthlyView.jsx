@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { T } from '../theme'
-import { getTodayKey, MONTHS, DAY_HEADERS, getDaysInMonth, getFirstDay } from '../utils'
+import { getTodayKey, MONTHS, DAY_HEADERS, getDaysInMonth, getFirstDay, calcBestStreak } from '../utils'
 
 export default function MonthlyView({ habits, completions, onToggle, onBack }) {
   const now = new Date()
@@ -38,6 +38,7 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
   }).length
 
   const rate = totalDays > 0 ? Math.round(completedDays / totalDays * 100) : 0
+  const bestStreak = calcBestStreak(selectedHabit, completions)
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: T.sans, padding: '32px 20px 40px' }}>
@@ -114,7 +115,8 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
                   {[
                     [T.sageLight, T.sage, completedDays, 'Done'],
                     [T.amberLight, T.amber, rate + '%', 'Rate'],
-                    [T.accentLight, T.accent, totalDays - completedDays, 'Missed']
+                    [T.accentLight, T.accent, totalDays - completedDays, 'Missed'],
+                    [T.sageLight, T.sage, bestStreak, 'Best']
                   ].map(([bg, col, val, label]) => (
                     <div key={label} style={{
                       flex: 1, background: bg, borderRadius: 12, padding: '12px 10px', textAlign: 'center'

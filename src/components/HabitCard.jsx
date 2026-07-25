@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { T } from '../theme'
-import { getDayLabel, calcStreak } from '../utils'
+import { getDayLabel, calcStreak, calcBestStreak } from '../utils'
 import { useLongPress } from '../hooks/useLongPress'
 
 export default function HabitCard({
@@ -9,6 +9,7 @@ export default function HabitCard({
   onToggle, onStartEdit, onRename, onCancelEdit, onDelete
 }) {
   const streak = calcStreak(habit.id, completions)
+  const bestStreak = calcBestStreak(habit.id, completions)
   const done = completions[habit.id]?.[today]
 
   const longPress = useLongPress(
@@ -74,6 +75,12 @@ export default function HabitCard({
               fontSize: 12, background: T.amberLight, color: T.amber, borderRadius: 99,
               padding: '3px 10px', fontWeight: 700, letterSpacing: '-0.2px',
             }}>{streak}d</span>
+          )}
+          {bestStreak > 0 && bestStreak > streak && (
+            <span style={{
+              fontSize: 12, background: T.sageLight, color: T.sage, borderRadius: 99,
+              padding: '3px 10px', fontWeight: 700, letterSpacing: '-0.2px',
+            }} title="Best streak">{bestStreak}d best</span>
           )}
           <button onClick={() => onStartEdit(habit.id, habit.name)} style={{
             background: 'none', border: 'none', color: T.inkFaint, cursor: 'pointer',

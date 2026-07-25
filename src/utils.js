@@ -17,13 +17,32 @@ export function getDayLabel(dateStr) {
 export function calcStreak(habitId, completions) {
   let streak = 0
   const today = new Date()
-  for (let i = 0; i < 365; i++) {
+  const todayKey = today.toISOString().split('T')[0]
+  const startFromToday = completions[habitId]?.[todayKey]
+  for (let i = startFromToday ? 0 : 1; i < 365; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
     if (completions[habitId]?.[d.toISOString().split('T')[0]]) streak++
     else break
   }
   return streak
+}
+
+export function calcBestStreak(habitId, completions) {
+  const dates = Object.keys(completions[habitId] || {}).sort()
+  if (dates.length === 0) return 0
+  let best = 1
+  let current = 1
+  for (let i = 1; i < dates.length; i++) {
+    const diff = (new Date(dates[i]) - new Date(dates[i - 1])) / 86400000
+    if (diff === 1) {
+      current++
+      best = Math.max(best, current)
+    } else {
+      current = 1
+    }
+  }
+  return best
 }
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
