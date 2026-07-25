@@ -76,7 +76,7 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
                     color: active ? '#fff' : T.inkSoft,
                     fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
                     transition: 'all 0.25s',
-                    boxShadow: active ? `0 2px 8px ${T.accent}40` : 'none'
+                    boxShadow: active ? '0 2px 8px var(--accent-glow)' : 'none'
                   }}>{h.name}</button>
                 )
               })}

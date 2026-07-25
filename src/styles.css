@@ -1,0 +1,99 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg);
+  color: var(--ink);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+:root {
+  --bg: #FAF8F4;
+  --card: #FFFFFF;
+  --ink: #2C2825;
+  --inkSoft: #6B6560;
+  --inkMuted: #A8A29E;
+  --inkFaint: #D4D0CC;
+  --cream: #F5F0E8;
+  --creamDark: #EDE8DE;
+  --accent: #C4653A;
+  --accentLight: #F8EDE8;
+  --accentGlow: #E8845A;
+  --sage: #5B8C6F;
+  --sageLight: #EDF5F0;
+  --sageDark: #4A7A5E;
+  --amber: #D49B3A;
+  --amberLight: #FDF6E8;
+  --danger: #C4533A;
+  --dangerLight: #FDF0ED;
+  --overlay: rgba(44, 40, 37, 0.4);
+  --shadow: 0 1px 3px rgba(44, 40, 37, 0.04), 0 4px 12px rgba(44, 40, 37, 0.06);
+  --shadowHover: 0 2px 8px rgba(44, 40, 37, 0.08), 0 8px 24px rgba(44, 40, 37, 0.1);
+  --radius: 14px;
+  --accent-soft: rgba(196, 101, 58, 0.09);
+  --accent-shadow: rgba(196, 101, 58, 0.19);
+  --accent-glow: rgba(196, 101, 58, 0.25);
+  --crem-radial: #EDE8DE;
+  --dot-grid: 24px;
+}
+
+html[data-theme="dark"] {
+  --bg: #1A1815;
+  --card: #252220;
+  --ink: #EDE8DE;
+  --inkSoft: #B5AFA8;
+  --inkMuted: #8A847E;
+  --inkFaint: #4A4540;
+  --cream: #2D2925;
+  --creamDark: #353130;
+  --accent: #E8845A;
+  --accentLight: #3A2A20;
+  --accentGlow: #F2A07A;
+  --sage: #6FA886;
+  --sageLight: #2A3530;
+  --sageDark: #5B9776;
+  --amber: #E8B65A;
+  --amberLight: #3A3320;
+  --danger: #E0705A;
+  --dangerLight: #3A2520;
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadowHover: 0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --accent-soft: rgba(232, 132, 90, 0.12);
+  --accent-shadow: rgba(232, 132, 90, 0.22);
+  --accent-glow: rgba(232, 132, 90, 0.28);
+  --crem-radial: #353130;
+}

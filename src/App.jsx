@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { T } from './theme'
 import { getTodayKey, getLast7Days } from './utils'
+import { useTheme } from './hooks/useTheme'
 import Toast from './components/Toast'
 import ConfirmDialog from './components/ConfirmDialog'
 import MonthlyView from './components/MonthlyView'
@@ -10,6 +11,7 @@ import HabitCard from './components/HabitCard'
 const USER_ID = 'user_default'
 
 export default function App() {
+  const { theme, toggle: toggleTheme } = useTheme()
   const [habits, setHabits] = useState([])
   const [completions, setCompletions] = useState({})
   const [newHabit, setNewHabit] = useState('')
@@ -147,6 +149,14 @@ export default function App() {
             onMouseEnter={e => { e.currentTarget.style.background = T.accentLight; e.currentTarget.style.borderColor = T.accent }}
             onMouseLeave={e => { e.currentTarget.style.background = T.card; e.currentTarget.style.borderColor = T.creamDark }}
           >Monthly</button>
+          <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} style={{
+            background:T.card, border:`1.5px solid ${T.creamDark}`, borderRadius:10, padding:'9px 12px',
+            cursor:'pointer', fontSize:16, color:T.inkSoft, fontFamily:T.sans,
+            transition:'all 0.25s', boxShadow:T.shadow, marginTop:4, lineHeight:1,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = T.amber; e.currentTarget.style.borderColor = T.amber }}
+            onMouseLeave={e => { e.currentTarget.style.color = T.inkSoft; e.currentTarget.style.borderColor = T.creamDark }}
+          >{theme === 'dark' ? '\u2600' : '\u263D'}</button>
         </div>
 
         {/* Progress */}
@@ -208,13 +218,13 @@ export default function App() {
               fontSize:14, outline:'none', background:T.card, color:T.ink,
               fontFamily:T.sans, fontWeight:500, transition:'all 0.25s', boxShadow:T.shadow,
             }}
-            onFocus={e => { e.target.style.borderColor = T.accent; e.target.style.boxShadow = `0 0 0 3px ${T.accent}18` }}
+            onFocus={e => { e.target.style.borderColor = T.accent; e.target.style.boxShadow = '0 0 0 3px var(--accent-soft)' }}
             onBlur={e => { e.target.style.borderColor = T.creamDark; e.target.style.boxShadow = T.shadow }}
           />
           <button onClick={addHabit} style={{
             background:T.accent, color:'#fff', border:'none', borderRadius:12,
             padding:'13px 20px', fontSize:20, cursor:'pointer', fontWeight:700,
-            transition:'all 0.25s', boxShadow:`0 2px 8px ${T.accent}30`,
+            transition:'all 0.25s', boxShadow:'0 2px 8px var(--accent-shadow)',
             lineHeight:1, fontFamily:T.sans,
           }}
             onMouseEnter={e => { e.currentTarget.style.background = T.accentGlow; e.currentTarget.style.transform = 'scale(1.05)' }}
