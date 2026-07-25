@@ -67,7 +67,6 @@ export default function HabitCard({
             <input value={editName}
               onChange={e => setEditName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') onRename(habit.id); if (e.key === 'Escape') onCancelEdit() }}
-              onBlur={() => onRename(habit.id)}
               autoFocus
               style={{
                 fontWeight: 600, fontSize: 15, color: T.ink, border: 'none', outline: 'none',
