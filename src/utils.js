@@ -1,12 +1,16 @@
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function getTodayKey() {
-  return new Date().toISOString().split('T')[0]
+  return localDateKey(new Date())
 }
 
 export function getLast7Days() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))
-    return d.toISOString().split('T')[0]
+    return localDateKey(d)
   })
 }
 
@@ -24,12 +28,12 @@ export function isScheduled(habit, dateKey) {
 export function calcStreak(habitId, completions, habit) {
   let streak = 0
   const today = new Date()
-  const todayKey = today.toISOString().split('T')[0]
+  const todayKey = localDateKey(today)
   const startFromToday = completions[habitId]?.[todayKey] && isScheduled(habit || {}, todayKey)
   for (let i = startFromToday ? 0 : 1; i < 365; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    const key = d.toISOString().split('T')[0]
+    const key = localDateKey(d)
     if (!isScheduled(habit || {}, key)) continue
     if (completions[habitId]?.[key]) streak++
     else break
