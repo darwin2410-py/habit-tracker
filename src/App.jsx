@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { getTodayKey, getLast7Days, isScheduled, reorderSubset } from './utils'
 import { useTheme } from './hooks/useTheme'
 import Toast from './components/Toast'
-import ConfirmDialog from './components/ConfirmDialog'
+import Confetti from './components/Confetti'
+import { makeConfetti } from './confetti'
 import MonthlyView from './components/MonthlyView'
 import HabitCard from './components/HabitCard'
 import FrequencyPicker from './components/FrequencyPicker'
@@ -13,6 +14,16 @@ import CategoryPicker from './components/CategoryPicker'
 import CategoryChips from './components/CategoryChips'
 
 const USER_ID = 'user_default'
+const UNDO_MS = 5000
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function frequencyLabel(freq) {
+  if (freq.type === 'weekdays') return 'Weekdays'
+  if (freq.type === 'weekends') return 'Weekends'
+  if (freq.type === 'custom') return freq.days?.length ? freq.days.map(d => DAY_NAMES[d]).join(', ') : 'Pick days'
+  return 'Every day'
+}
 
 function sortHabits(list) {
   return [...list].sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity))
@@ -35,10 +46,11 @@ export default function App() {
   const [editName, setEditName] = useState('')
   const [editingFreq, setEditingFreq] = useState(null)
   const [editingCatId, setEditingCatId] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)
   const [toast, setToast] = useState(null)
+  const [confetti, setConfetti] = useState(null)
   const inputRef = useRef(null)
   const toastId = useRef(0)
+  const pendingDelete = useRef(null)
   const today = getTodayKey()
   const last7 = getLast7Days()
   const sensors = useSensors(
@@ -46,9 +58,12 @@ export default function App() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  function showToast(message, type = 'success') {
-    setToast({ message, type, key: ++toastId.current })
+  function showToast(message, type = 'success', extra = {}) {
+    setToast({ message, type, key: ++toastId.current, ...extra })
   }
+
+  const hideToast = useCallback(() => setToast(null), [])
+  const hideConfetti = useCallback(() => setConfetti(null), [])
 
   useEffect(() => {
     async function load() {
@@ -107,17 +122,57 @@ export default function App() {
     setEditingId(null)
   }
 
-  async function removeHabit(id) {
-    const { error } = await supabase.from('habits').delete().eq('id', id)
-    if (error) { console.error('delete error:', error); showToast('Failed to delete', 'error'); return }
-    setHabits(h => h.filter(x => x.id !== id))
-    setCompletions(c => { const n = {...c}; delete n[id]; return n })
-    setDeleteTarget(null)
-    showToast('Habit deleted')
+  // Deleting hides the habit right away and only removes it from the
+  // database once the undo window has passed.
+  function deleteHabit(habit) {
+    commitDelete()
+    const index = habits.findIndex(h => h.id === habit.id)
+    const habitCompletions = completions[habit.id]
+    setHabits(h => h.filter(x => x.id !== habit.id))
+    setCompletions(c => { const n = { ...c }; delete n[habit.id]; return n })
+    if (editingId === habit.id) setEditingId(null)
+    pendingDelete.current = { habit, index, habitCompletions, timer: setTimeout(commitDelete, UNDO_MS) }
+    showToast('Habit deleted', 'success', { duration: UNDO_MS, action: { label: 'Undo', onClick: undoDelete } })
   }
+
+  function restoreHabit({ habit, index, habitCompletions }) {
+    setHabits(h => { const n = [...h]; n.splice(Math.min(index, n.length), 0, habit); return n })
+    if (habitCompletions) setCompletions(c => ({ ...c, [habit.id]: habitCompletions }))
+  }
+
+  function undoDelete() {
+    const pending = pendingDelete.current
+    if (!pending) return
+    clearTimeout(pending.timer)
+    pendingDelete.current = null
+    restoreHabit(pending)
+    setToast(null)
+  }
+
+  async function commitDelete() {
+    const pending = pendingDelete.current
+    if (!pending) return
+    clearTimeout(pending.timer)
+    pendingDelete.current = null
+    const { error } = await supabase.from('habits').delete().eq('id', pending.habit.id)
+    if (error) {
+      console.error('delete error:', error)
+      restoreHabit(pending)
+      showToast('Failed to delete', 'error')
+    }
+  }
+
+  useEffect(() => {
+    window.addEventListener('pagehide', commitDelete)
+    return () => window.removeEventListener('pagehide', commitDelete)
+  })
 
   async function toggle(habitId, dateKey) {
     const done = completions[habitId]?.[dateKey]
+    if (!done && dateKey === today) {
+      const due = habits.filter(h => isScheduled(h, today))
+      if (due.every(h => h.id === habitId || completions[h.id]?.[today])) setConfetti(makeConfetti())
+    }
     // Optimistic update
     setCompletions(c => ({ ...c, [habitId]: { ...(c[habitId]||{}), [dateKey]: !done } }))
     if (done) {
@@ -150,8 +205,10 @@ export default function App() {
 
   async function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return
+    const group = [dueHabits, restHabits].find(g => g.some(h => h.id === active.id))
+    if (!group.some(h => h.id === over.id)) return
     const prev = habits
-    const next = reorderSubset(prev, visibleHabits.map(h => h.id), active.id, over.id)
+    const next = reorderSubset(prev, group.map(h => h.id), active.id, over.id)
       .map((h, i) => ({ ...h, sort_order: i }))
     setHabits(next)
     const changed = next.filter((h, i) => prev[i].id !== h.id || prev[i].sort_order !== i)
@@ -174,6 +231,8 @@ export default function App() {
   }
 
   const visibleHabits = habits.filter(h => !categoryFilter || h.category_id === categoryFilter)
+  const dueHabits = visibleHabits.filter(h => isScheduled(h, today))
+  const restHabits = visibleHabits.filter(h => !isScheduled(h, today))
   const dueToday = habits.filter(h => isScheduled(h, today))
   const todayTotal = dueToday.filter(h => completions[h.id]?.[today]).length
   const pct = dueToday.length ? Math.round(todayTotal / dueToday.length * 100) : 0
@@ -187,6 +246,15 @@ export default function App() {
 
   if (view === 'monthly') return <MonthlyView habits={habits} completions={completions} onToggle={toggle} onBack={() => setView('daily')} />
 
+  const cardProps = {
+    completions, today, last7, categories,
+    editingId, editName, setEditName,
+    editingFreq, setEditingFreq,
+    editingCatId, setEditingCatId,
+    onToggle: toggle, onStartEdit: startEdit,
+    onRename: renameHabit, onCancelEdit: () => setEditingId(null),
+  }
+  const selectedCategory = categories.find(c => c.id === categoryId)
   const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
 
   return (
@@ -227,6 +295,43 @@ export default function App() {
           </div>
         )}
 
+        {/* Add Habit */}
+        <div className="add-box fade-up" style={{ animationDelay: '0.1s' }}>
+          <div className="add-row">
+            <input ref={inputRef} className="input add-input" value={newHabit}
+              onChange={e => setNewHabit(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addHabit()}
+              placeholder="What will you build?"
+              aria-label="New habit name"
+            />
+            <button className="add-btn" onClick={addHabit} aria-label="Add habit">+</button>
+          </div>
+
+          <div className="add-options">
+            <button className={`option-btn${showFreqPicker ? ' open' : ''}`} aria-expanded={showFreqPicker}
+              onClick={() => { setShowFreqPicker(p => !p); setShowCategoryPicker(false) }}>
+              &#8635; {frequencyLabel(frequency)} <small>{showFreqPicker ? '\u25B2' : '\u25BC'}</small>
+            </button>
+            <button className={`option-btn${showCategoryPicker ? ' open' : ''}`} aria-expanded={showCategoryPicker}
+              onClick={() => { setShowCategoryPicker(p => !p); setShowFreqPicker(false) }}>
+              {selectedCategory
+                ? <><span className="chip-dot" style={{ '--chip-color': selectedCategory.color }} />{selectedCategory.name}</>
+                : 'No category'} <small>{showCategoryPicker ? '\u25B2' : '\u25BC'}</small>
+            </button>
+            {showFreqPicker && (
+              <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} />
+            )}
+            {showCategoryPicker && (
+              <CategoryPicker
+                categories={categories}
+                selectedId={categoryId}
+                onChange={id => { setCategoryId(id); if (newHabit) inputRef.current?.focus() }}
+                onCreate={createCategory}
+              />
+            )}
+          </div>
+        </div>
+
         {/* Category filter */}
         {(categories.length > 0 || categoryFilter) && (
           <div className="fade-up" style={{ marginBottom: 16 }}>
@@ -235,75 +340,37 @@ export default function App() {
         )}
 
         {/* Habits List */}
-        <div style={{ marginBottom: 24 }}>
-          {habits.length === 0 && (
-            <div className="empty fade-up" style={{ animationDelay: '0.1s' }}>
-              No habits yet. Start with one below.
-            </div>
-          )}
+        {habits.length === 0 && (
+          <div className="empty fade-up" style={{ animationDelay: '0.15s' }}>
+            No habits yet. Add your first one above.
+          </div>
+        )}
 
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={visibleHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-              {visibleHabits.map((habit, idx) => (
-                <HabitCard key={habit.id} habit={habit} idx={idx} completions={completions}
-                  today={today} last7={last7}
-                  editingId={editingId} editName={editName} setEditName={setEditName}
-                  editingFreq={editingFreq} setEditingFreq={setEditingFreq}
-                  editingCatId={editingCatId} setEditingCatId={setEditingCatId}
-                  onToggle={toggle} onStartEdit={startEdit}
-                  onRename={renameHabit} onCancelEdit={() => setEditingId(null)}
-                  onDelete={() => setDeleteTarget(habit)}
-                  category={categories.find(c => c.id === habit.category_id) || null}
-                  categories={categories} />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={dueHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            {dueHabits.map((habit, idx) => (
+              <HabitCard key={habit.id} habit={habit} idx={idx} {...cardProps}
+                onDelete={() => deleteHabit(habit)}
+                category={categories.find(c => c.id === habit.category_id) || null} />
+            ))}
+          </SortableContext>
 
-        {/* Add Habit */}
-        <div className="add-row fade-up" style={{ animationDelay: '0.3s' }}>
-          <input ref={inputRef} className="input add-input" value={newHabit}
-            onChange={e => setNewHabit(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addHabit()}
-            placeholder="What will you build?"
-          />
-          <button className="add-btn" onClick={addHabit}>+</button>
-        </div>
-
-        {/* Frequency & Category */}
-        <div className="add-options fade-up" style={{ animationDelay: '0.35s' }}>
-          <button className="link-btn" onClick={() => setShowFreqPicker(p => !p)}>
-            {frequency.type === 'daily' ? 'Every day' : `Repeats: ${frequency.type}`} <small>{showFreqPicker ? '\u25B2' : '\u25BC'}</small>
-          </button>
-          {showFreqPicker && (
-            <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} />
-          )}
-          <button className="link-btn" onClick={() => setShowCategoryPicker(p => !p)}>
-            {categoryId ? categories.find(c => c.id === categoryId)?.name || 'Category' : 'Add category'} <small>{showCategoryPicker ? '\u25B2' : '\u25BC'}</small>
-          </button>
-          {showCategoryPicker && (
-            <CategoryPicker
-              categories={categories}
-              selectedId={categoryId}
-              onChange={id => { setCategoryId(id); if (newHabit) inputRef.current?.focus() }}
-              onCreate={createCategory}
-            />
-          )}
-        </div>
+          {restHabits.length > 0 && <div className="group-label">Rest day</div>}
+          <SortableContext items={restHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            {restHabits.map((habit, idx) => (
+              <HabitCard key={habit.id} habit={habit} idx={dueHabits.length + idx} rest {...cardProps}
+                onDelete={() => deleteHabit(habit)}
+                category={categories.find(c => c.id === habit.category_id) || null} />
+            ))}
+          </SortableContext>
+        </DndContext>
 
         <div className="footer serif">small steps, every day</div>
       </div>
 
-      {deleteTarget && (
-        <ConfirmDialog
-          title="Delete habit?"
-          message={`"${deleteTarget.name}" and all its history will be permanently removed.`}
-          onConfirm={() => removeHabit(deleteTarget.id)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-
-      {toast && <Toast key={toast.key} message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+      {toast && <Toast key={toast.key} message={toast.message} type={toast.type}
+        action={toast.action} duration={toast.duration} onDone={hideToast} />}
+      {confetti && <Confetti pieces={confetti} onDone={hideConfetti} />}
     </div>
   )
 }

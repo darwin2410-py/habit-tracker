@@ -1,13 +1,14 @@
 import { useCallback } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getDayLabel, calcStreak, calcBestStreak, isScheduled } from '../utils'
+import { getDayLabel, calcStreak, calcBestStreak, isScheduled, parseDateKey } from '../utils'
 import { useLongPress } from '../hooks/useLongPress'
 import FrequencyPicker from './FrequencyPicker'
 import CategoryChips from './CategoryChips'
+import HabitMenu from './HabitMenu'
 
 export default function HabitCard({
-  habit, idx, completions, today, last7,
+  habit, idx, completions, today, last7, rest,
   editingId, editName, setEditName,
   editingFreq, setEditingFreq,
   editingCatId, setEditingCatId,
@@ -24,7 +25,8 @@ export default function HabitCard({
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: habit.id, disabled: isEditing })
 
-  const longPress = useLongPress(
+  // eslint-disable-next-line no-unused-vars
+  const { wasLongPress, ...longPress } = useLongPress(
     useCallback(() => onStartEdit(habit.id, habit.name, habit.frequency, habit.category_id), [habit.id, habit.name, habit.frequency, habit.category_id, onStartEdit]),
     500
   )
@@ -41,15 +43,16 @@ export default function HabitCard({
   return (
     <div ref={setNodeRef} className={`habit${isDragging ? ' dragging' : ''}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}>
-      <div className={`card habit-card fade-up${done ? ' done' : ''}${isEditing ? ' editing' : ''}`}
+      <div className={`card habit-card fade-up${done ? ' done' : ''}${isEditing ? ' editing' : ''}${rest && !isEditing ? ' rest' : ''}`}
         style={{ animationDelay: `${0.08 + idx * 0.05}s` }}>
         <div className="habit-top">
           <div className="habit-main">
             {!isEditing && (
-              <button ref={setActivatorNodeRef} className="drag-handle" title="Drag to reorder"
-                {...attributes} {...listeners}>&#8942;&#8942;</button>
+              <button ref={setActivatorNodeRef} className="drag-handle hit" title="Drag to reorder"
+                {...attributes} {...listeners} aria-label={`Reorder ${habit.name}`}>&#8942;&#8942;</button>
             )}
-            <button className={`check${done ? ' done' : ''}`} disabled={!scheduled}
+            <button className={`check hit${done ? ' done' : ''}`} disabled={!scheduled}
+              aria-label={`Mark ${habit.name} done today`} aria-pressed={!!done}
               onClick={() => onToggle(habit.id, today)}>
               {done ? '✓' : ''}
             </button>
@@ -62,9 +65,8 @@ export default function HabitCard({
               />
             ) : (
               <span className="habit-name" onDoubleClick={startEdit} {...longPress}
-                title="Double-click or long-press to rename">
+                title="Double-click or long-press to edit">
                 {habit.name}
-                {!scheduled && <span className="rest-tag">Rest day</span>}
               </span>
             )}
           </div>
@@ -77,8 +79,7 @@ export default function HabitCard({
                 {category.name}
               </span>
             )}
-            <button className="btn-ghost" style={{ fontSize: 14, padding: '2px 4px' }} onClick={startEdit} title="Rename">&#9998;</button>
-            <button className="btn-ghost danger" style={{ fontSize: 18, padding: '0 2px' }} onClick={onDelete} title="Delete">&times;</button>
+            {!isEditing && <HabitMenu name={habit.name} onEdit={startEdit} onDelete={onDelete} />}
           </div>
         </div>
 
@@ -105,7 +106,11 @@ export default function HabitCard({
                 <div key={d} className={`week-day${dayScheduled ? '' : ' off'}`}>
                   <div className={`week-label${isToday ? ' today' : ''}`}>{getDayLabel(d)}</div>
                   <button disabled={!dayScheduled} onClick={() => onToggle(habit.id, d)}
-                    className={`week-cell${dayDone ? ' done' : ''}${isToday ? ' today' : ''}`} />
+                    className={`week-cell${dayDone ? ' done' : ''}${isToday ? ' today' : ''}`}
+                    aria-label={`${habit.name}, ${parseDateKey(d).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`}
+                    aria-pressed={!!dayDone}>
+                    {Number(d.slice(8))}
+                  </button>
                 </div>
               )
             })}

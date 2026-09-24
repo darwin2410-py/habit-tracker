@@ -624,15 +624,6 @@ button {
   text-decoration-color: var(--inkFaint);
 }
 
-.rest-tag {
-  font-size: 10px;
-  color: var(--inkMuted);
-  margin-left: 6px;
-  font-weight: 400;
-  font-style: italic;
-  vertical-align: middle;
-}
-
 .habit-name-input {
   flex: 1;
   min-width: 0;
@@ -964,3 +955,217 @@ button {
 }
 
 .cal-day.off.done { opacity: 1; }
+
+/* Bigger tap area without changing the visual size */
+
+.hit {
+  position: relative;
+}
+
+.hit::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+/* Add habit */
+
+.add-box {
+  margin-bottom: 24px;
+}
+
+.option-btn {
+  background: var(--card);
+  border: 1.5px solid var(--creamDark);
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--inkSoft);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.option-btn:hover,
+.option-btn.open {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.option-btn small { font-size: 9px; }
+
+.add-options {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.add-options .panel {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* Habit menu */
+
+.menu {
+  position: relative;
+}
+
+.menu-btn {
+  background: none;
+  border: none;
+  color: var(--inkMuted);
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.menu-btn:hover,
+.menu-btn[aria-expanded="true"] {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 130px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadowHover);
+  animation: scaleIn 0.15s ease both;
+  transform-origin: top right;
+}
+
+.menu-list button {
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.menu-list button:hover { background: var(--cream); }
+.menu-list button.danger { color: var(--danger); }
+
+/* Rest day group */
+
+.group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--inkMuted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 24px 0 10px;
+}
+
+.habit-card.rest {
+  padding: 14px 20px;
+  opacity: 0.75;
+}
+
+.habit-card.rest .habit-top { margin-bottom: 10px; }
+.habit-card.rest .week-cell { aspect-ratio: auto; height: 26px; }
+
+/* Week cell date */
+
+.week-cell {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--inkMuted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-cell.done { color: #fff; }
+
+/* Toast action */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.toast-action {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 0;
+}
+
+/* Monthly overview */
+
+.cal-day.before { opacity: 0.35; }
+
+.cal-day.heat {
+  background: color-mix(in srgb, var(--sage) var(--heat), var(--cream));
+  cursor: default;
+}
+
+.cal-day.heat.strong { color: #fff; }
+.cal-day.heat.none { background: transparent; color: var(--inkFaint); }
+
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--inkMuted);
+}
+
+.legend span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Confetti */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: confettiFall var(--dur) cubic-bezier(0.25, 0.6, 0.5, 1) var(--delay) forwards;
+}
+
+@keyframes confettiFall {
+  to {
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+
+.habit:has(.menu-list) { z-index: 30; }
