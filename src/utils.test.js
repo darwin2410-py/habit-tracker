@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { calcStreak, calcBestStreak, isScheduled, reorderSubset } from './utils'
+import { calcStreak, calcBestStreak, isScheduled, reorderSubset, getStartKey } from './utils'
 
 const daily = { type: 'daily' }
 const weekdays = { frequency: { type: 'weekdays', days: [1, 2, 3, 4, 5] } }
@@ -64,5 +64,20 @@ describe('reorderSubset', () => {
   })
   it('keeps items outside the subset in place', () => {
     expect(ids(reorderSubset(list, ['a', 'c', 'd'], 'd', 'a'))).toBe('dbac')
+  })
+})
+
+describe('getStartKey', () => {
+  it('uses the creation date', () => {
+    expect(getStartKey({ created_at: '2026-09-20' }, {})).toBe('2026-09-20')
+  })
+  it('handles timestamp values', () => {
+    expect(getStartKey({ created_at: '2026-09-20T08:00:00+00:00' }, {})).toBe('2026-09-20')
+  })
+  it('moves back to an earlier completion', () => {
+    expect(getStartKey({ created_at: '2026-09-20' }, { '2026-09-18': true, '2026-09-10': false })).toBe('2026-09-18')
+  })
+  it('returns null without a creation date', () => {
+    expect(getStartKey({}, { '2026-09-18': true })).toBe(null)
   })
 })

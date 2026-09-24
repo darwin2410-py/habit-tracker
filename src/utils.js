@@ -92,3 +92,11 @@ export function getDaysInMonth(y, m) {
 export function getFirstDay(y, m) {
   return new Date(y, m, 1).getDay()
 }
+// First day a habit counts toward stats: its creation date, or an earlier
+// completion if one was backfilled. Null means no lower bound.
+export function getStartKey(habit, habitCompletions = {}) {
+  const created = habit?.created_at ? String(habit.created_at).slice(0, 10) : null
+  if (!created) return null
+  const first = Object.keys(habitCompletions).filter(k => habitCompletions[k]).sort()[0]
+  return first && first < created ? first : created
+}
