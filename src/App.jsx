@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
-import { T } from './theme'
-import { getTodayKey, getLast7Days } from './utils'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { getTodayKey, getLast7Days, isScheduled, reorderSubset } from './utils'
 import { useTheme } from './hooks/useTheme'
 import Toast from './components/Toast'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -9,8 +10,13 @@ import MonthlyView from './components/MonthlyView'
 import HabitCard from './components/HabitCard'
 import FrequencyPicker from './components/FrequencyPicker'
 import CategoryPicker from './components/CategoryPicker'
+import CategoryChips from './components/CategoryChips'
 
 const USER_ID = 'user_default'
+
+function sortHabits(list) {
+  return [...list].sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity))
+}
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme()
@@ -32,11 +38,16 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [toast, setToast] = useState(null)
   const inputRef = useRef(null)
+  const toastId = useRef(0)
   const today = getTodayKey()
   const last7 = getLast7Days()
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   function showToast(message, type = 'success') {
-    setToast({ message, type, key: Date.now() })
+    setToast({ message, type, key: ++toastId.current })
   }
 
   useEffect(() => {
@@ -49,7 +60,7 @@ export default function App() {
       if (e1) console.error('habits error:', e1)
       if (e2) console.error('completions error:', e2)
       if (e3) console.error('categories error:', e3)
-      if (h) setHabits(h)
+      if (h) setHabits(sortHabits(h))
       if (cats) setCategories(cats)
       if (c) {
         const map = {}
@@ -67,8 +78,9 @@ export default function App() {
   async function addHabit() {
     const name = newHabit.trim()
     if (!name) return
-    const id = Date.now().toString()
-    const habit = { id, name, created_at: today, user_id: USER_ID, frequency, category_id: categoryId }
+    const id = crypto.randomUUID()
+    const sort_order = habits.reduce((max, h) => Math.max(max, h.sort_order ?? -1), -1) + 1
+    const habit = { id, name, created_at: today, user_id: USER_ID, frequency, category_id: categoryId, sort_order }
     const { error } = await supabase.from('habits').insert(habit)
     if (error) { console.error('insert error:', error); showToast('Failed to add habit', 'error'); return }
     setHabits(h => [...h, habit])
@@ -128,12 +140,30 @@ export default function App() {
   }
 
   async function createCategory(name, color) {
-    const id = 'cat_' + Date.now().toString()
+    const id = 'cat_' + crypto.randomUUID()
     const cat = { id, name, color, user_id: USER_ID }
     const { error } = await supabase.from('categories').insert(cat)
     if (error) { console.error('category insert error:', error); showToast('Failed to create category', 'error'); return }
     setCategories(c => [...c, cat])
     setCategoryId(id)
+  }
+
+  async function handleDragEnd({ active, over }) {
+    if (!over || active.id === over.id) return
+    const prev = habits
+    const next = reorderSubset(prev, visibleHabits.map(h => h.id), active.id, over.id)
+      .map((h, i) => ({ ...h, sort_order: i }))
+    setHabits(next)
+    const changed = next.filter((h, i) => prev[i].id !== h.id || prev[i].sort_order !== i)
+    const results = await Promise.all(changed.map(h =>
+      supabase.from('habits').update({ sort_order: h.sort_order }).eq('id', h.id)
+    ))
+    const failed = results.find(r => r.error)
+    if (failed) {
+      console.error('reorder error:', failed.error)
+      showToast('Failed to save order', 'error')
+      setHabits(prev)
+    }
   }
 
   function startEdit(habitId, habitName, freq, catId) {
@@ -143,16 +173,15 @@ export default function App() {
     setEditingCatId(catId || null)
   }
 
-  const todayTotal = habits.filter(h => completions[h.id]?.[today]).length
-  const pct = habits.length ? Math.round(todayTotal / habits.length * 100) : 0
+  const visibleHabits = habits.filter(h => !categoryFilter || h.category_id === categoryFilter)
+  const dueToday = habits.filter(h => isScheduled(h, today))
+  const todayTotal = dueToday.filter(h => completions[h.id]?.[today]).length
+  const pct = dueToday.length ? Math.round(todayTotal / dueToday.length * 100) : 0
 
   if (!loaded) return (
-    <div style={{
-      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-      height:'100vh', background:T.bg, fontFamily:T.serif, color:T.inkMuted, gap:12
-    }}>
-      <div style={{ fontSize:28, animation:'pulse 1.5s ease infinite', color:T.accent }}>~</div>
-      <div style={{ fontSize:14, fontFamily:T.sans, fontWeight:500, letterSpacing:'1px', textTransform:'uppercase' }}>Loading</div>
+    <div className="loading serif">
+      <div className="loading-mark">~</div>
+      <div className="loading-text">Loading</div>
     </div>
   )
 
@@ -161,188 +190,110 @@ export default function App() {
   const dateStr = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
 
   return (
-    <div style={{
-      minHeight:'100vh', background:T.bg, fontFamily:T.sans,
-      padding:'36px 20px 40px',
-      backgroundImage:`radial-gradient(${T.creamDark} 0.5px, transparent 0.5px)`,
-      backgroundSize:'24px 24px'
-    }}>
-      <div style={{ maxWidth:440, margin:'0 auto' }}>
+    <div className="page dotted">
+      <div className="container">
 
         {/* Header */}
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:32, animation:'fadeUp 0.5s ease both' }}>
+        <div className="header fade-up">
           <div>
-            <p style={{ fontSize:13, fontWeight:500, color:T.inkMuted, marginBottom:4, textTransform:'uppercase', letterSpacing:'1.5px' }}>{dateStr}</p>
-            <h1 style={{ fontFamily:T.serif, fontSize:32, fontWeight:800, color:T.ink, letterSpacing:'-0.5px', lineHeight:1.1 }}>
-              My Habits
-            </h1>
+            <p className="header-date">{dateStr}</p>
+            <h1 className="serif">My Habits</h1>
           </div>
-          <button onClick={() => setView('monthly')} style={{
-            background:T.card, border:`1.5px solid ${T.creamDark}`, borderRadius:10, padding:'9px 16px',
-            cursor:'pointer', fontSize:13, color:T.accent, fontWeight:700, fontFamily:T.sans,
-            transition:'all 0.25s', boxShadow:T.shadow, marginTop:4
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = T.accentLight; e.currentTarget.style.borderColor = T.accent }}
-            onMouseLeave={e => { e.currentTarget.style.background = T.card; e.currentTarget.style.borderColor = T.creamDark }}
-          >Monthly</button>
-          <button onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} style={{
-            background:T.card, border:`1.5px solid ${T.creamDark}`, borderRadius:10, padding:'9px 12px',
-            cursor:'pointer', fontSize:16, color:T.inkSoft, fontFamily:T.sans,
-            transition:'all 0.25s', boxShadow:T.shadow, marginTop:4, lineHeight:1,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.color = T.amber; e.currentTarget.style.borderColor = T.amber }}
-            onMouseLeave={e => { e.currentTarget.style.color = T.inkSoft; e.currentTarget.style.borderColor = T.creamDark }}
-          >{theme === 'dark' ? '\u2600' : '\u263D'}</button>
+          <div className="header-actions">
+            <button className="btn-outline" onClick={() => setView('monthly')}>Monthly</button>
+            <button className="btn-outline btn-theme" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+              {theme === 'dark' ? '\u2600' : '\u263D'}
+            </button>
+          </div>
         </div>
 
         {/* Progress */}
         {habits.length > 0 && (
-          <div style={{
-            background:T.card, borderRadius:T.radius+2, padding:'20px 22px', marginBottom:24,
-            boxShadow:T.shadow, animation:'fadeUp 0.5s ease 0.05s both'
-          }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:T.inkSoft, textTransform:'uppercase', letterSpacing:'0.5px' }}>Today's Progress</span>
-              <span style={{ fontFamily:T.serif, fontSize:20, fontWeight:800, color: pct === 100 ? T.sage : T.accent }}>
-                {todayTotal}<span style={{ fontSize:14, fontWeight:500, color:T.inkMuted }}>/{habits.length}</span>
+          <div className="card progress fade-up" style={{ animationDelay: '0.05s' }}>
+            <div className="progress-head">
+              <span className="progress-label">Today's Progress</span>
+              <span className={`progress-count serif${pct === 100 ? ' complete' : ''}`}>
+                {todayTotal}<small>/{dueToday.length}</small>
               </span>
             </div>
-            <div style={{ background:T.cream, borderRadius:99, height:6, overflow:'hidden' }}>
-              <div style={{
-                background: pct === 100
-                  ? `linear-gradient(90deg, ${T.sage}, ${T.sageDark})`
-                  : `linear-gradient(90deg, ${T.accent}, ${T.accentGlow})`,
-                borderRadius:99, height:6, width:`${pct}%`,
-                transition:'width 0.6s cubic-bezier(0.34,1.56,0.64,1)',
-              }} />
+            <div className="progress-track">
+              <div className={`progress-bar${pct === 100 ? ' complete' : ''}`} style={{ width: `${pct}%` }} />
             </div>
-            {pct === 100 && (
-              <p style={{ fontSize:12, color:T.sage, margin:'10px 0 0', fontWeight:600, fontStyle:'italic' }}>
-                All done for today. Well done.
-              </p>
+            {dueToday.length === 0 ? (
+              <p className="progress-note rest">Nothing scheduled today. Enjoy the rest.</p>
+            ) : pct === 100 && (
+              <p className="progress-note">All done for today. Well done.</p>
             )}
           </div>
         )}
 
-        {/* Habits List */}
+        {/* Category filter */}
         {(categories.length > 0 || categoryFilter) && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, animation: 'fadeUp 0.4s ease both' }}>
-            <button onClick={() => setCategoryFilter(null)} style={{
-              padding: '4px 12px', borderRadius: 99, border: '1.5px solid',
-              borderColor: !categoryFilter ? T.accent : T.creamDark,
-              background: !categoryFilter ? T.accent : 'transparent',
-              color: !categoryFilter ? '#fff' : T.inkSoft,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
-            }}>All</button>
-            {categories.map(c => {
-              const active = categoryFilter === c.id
-              return (
-                <button key={c.id} onClick={() => setCategoryFilter(active ? null : c.id)} style={{
-                  padding: '4px 12px', borderRadius: 99, border: '1.5px solid',
-                  borderColor: active ? c.color : T.creamDark,
-                  background: active ? c.color : 'transparent',
-                  color: active ? '#fff' : T.inkSoft,
-                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
-                  transition: 'all 0.2s',
-                }}>{c.name}</button>
-              )
-            })}
+          <div className="fade-up" style={{ marginBottom: 16 }}>
+            <CategoryChips categories={categories} selectedId={categoryFilter} onChange={setCategoryFilter} emptyLabel="All" />
           </div>
         )}
+
+        {/* Habits List */}
         <div style={{ marginBottom: 24 }}>
           {habits.length === 0 && (
-            <div style={{
-              textAlign:'center', color:T.inkMuted, padding:'48px 20px', fontSize:15,
-              fontFamily:T.serif, fontStyle:'italic', animation:'fadeUp 0.6s ease 0.1s both'
-            }}>
-              No habits yet — start with one below.
+            <div className="empty fade-up" style={{ animationDelay: '0.1s' }}>
+              No habits yet. Start with one below.
             </div>
           )}
 
-          {habits
-          .filter(h => !categoryFilter || h.category_id === categoryFilter)
-          .map((habit, idx) => (
-            <HabitCard key={habit.id} habit={habit} idx={idx} completions={completions}
-              today={today} last7={last7}
-              editingId={editingId} editName={editName} setEditName={setEditName}
-              editingFreq={editingFreq} setEditingFreq={setEditingFreq}
-              editingCatId={editingCatId} setEditingCatId={setEditingCatId}
-              onToggle={toggle} onStartEdit={startEdit}
-              onRename={renameHabit} onCancelEdit={() => setEditingId(null)}
-              onDelete={() => setDeleteTarget(habit)}
-              category={categories.find(c => c.id === habit.category_id) || null}
-              categories={categories} />
-          ))}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={visibleHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+              {visibleHabits.map((habit, idx) => (
+                <HabitCard key={habit.id} habit={habit} idx={idx} completions={completions}
+                  today={today} last7={last7}
+                  editingId={editingId} editName={editName} setEditName={setEditName}
+                  editingFreq={editingFreq} setEditingFreq={setEditingFreq}
+                  editingCatId={editingCatId} setEditingCatId={setEditingCatId}
+                  onToggle={toggle} onStartEdit={startEdit}
+                  onRename={renameHabit} onCancelEdit={() => setEditingId(null)}
+                  onDelete={() => setDeleteTarget(habit)}
+                  category={categories.find(c => c.id === habit.category_id) || null}
+                  categories={categories} />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Add Habit */}
-        <div style={{ display:'flex', gap:10, animation:'fadeUp 0.5s ease 0.3s both' }}>
-          <input ref={inputRef} value={newHabit} onChange={e => setNewHabit(e.target.value)}
-            onKeyDown={e => e.key==='Enter' && addHabit()}
+        <div className="add-row fade-up" style={{ animationDelay: '0.3s' }}>
+          <input ref={inputRef} className="input add-input" value={newHabit}
+            onChange={e => setNewHabit(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addHabit()}
             placeholder="What will you build?"
-            style={{
-              flex:1, padding:'13px 18px', borderRadius:12, border:`1.5px solid ${T.creamDark}`,
-              fontSize:14, outline:'none', background:T.card, color:T.ink,
-              fontFamily:T.sans, fontWeight:500, transition:'all 0.25s', boxShadow:T.shadow,
-            }}
-            onFocus={e => { e.target.style.borderColor = T.accent; e.target.style.boxShadow = '0 0 0 3px var(--accent-soft)' }}
-            onBlur={e => { e.target.style.borderColor = T.creamDark; e.target.style.boxShadow = T.shadow }}
           />
-          <button onClick={addHabit} style={{
-            background:T.accent, color:'#fff', border:'none', borderRadius:12,
-            padding:'13px 20px', fontSize:20, cursor:'pointer', fontWeight:700,
-            transition:'all 0.25s', boxShadow:'0 2px 8px var(--accent-shadow)',
-            lineHeight:1, fontFamily:T.sans,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = T.accentGlow; e.currentTarget.style.transform = 'scale(1.05)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = T.accent; e.currentTarget.style.transform = 'scale(1)' }}
-          >+</button>
+          <button className="add-btn" onClick={addHabit}>+</button>
         </div>
 
-        {/* Frequency Picker */}
-        <div style={{ marginTop: 10, animation: 'fadeUp 0.5s ease 0.35s both' }}>
-          <button onClick={() => setShowFreqPicker(p => !p)} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12, color: T.inkMuted, fontFamily: T.sans, fontWeight: 500,
-            padding: 0, display: 'flex', alignItems: 'center', gap: 4,
-            transition: 'color 0.2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.color = T.accent}
-            onMouseLeave={e => e.currentTarget.style.color = T.inkMuted}
-          >{frequency.type === 'daily' ? 'Every day' : `Repeats: ${frequency.type}`} <span style={{ fontSize: 10 }}>{showFreqPicker ? '\u25B2' : '\u25BC'}</span></button>
+        {/* Frequency & Category */}
+        <div className="add-options fade-up" style={{ animationDelay: '0.35s' }}>
+          <button className="link-btn" onClick={() => setShowFreqPicker(p => !p)}>
+            {frequency.type === 'daily' ? 'Every day' : `Repeats: ${frequency.type}`} <small>{showFreqPicker ? '\u25B2' : '\u25BC'}</small>
+          </button>
           {showFreqPicker && (
-            <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} style={{ marginTop: 8 }} />
+            <FrequencyPicker frequency={frequency} onChange={f => { setFrequency(f); if (newHabit) inputRef.current?.focus() }} />
           )}
-          <button onClick={() => setShowCategoryPicker(p => !p)} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12, color: T.inkMuted, fontFamily: T.sans, fontWeight: 500,
-            padding: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4,
-            transition: 'color 0.2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.color = T.accent}
-            onMouseLeave={e => e.currentTarget.style.color = T.inkMuted}
-          >{categoryId ? categories.find(c => c.id === categoryId)?.name || 'Category' : 'Add category'} <span style={{ fontSize: 10 }}>{showCategoryPicker ? '\u25B2' : '\u25BC'}</span></button>
+          <button className="link-btn" onClick={() => setShowCategoryPicker(p => !p)}>
+            {categoryId ? categories.find(c => c.id === categoryId)?.name || 'Category' : 'Add category'} <small>{showCategoryPicker ? '\u25B2' : '\u25BC'}</small>
+          </button>
           {showCategoryPicker && (
             <CategoryPicker
               categories={categories}
               selectedId={categoryId}
               onChange={id => { setCategoryId(id); if (newHabit) inputRef.current?.focus() }}
               onCreate={createCategory}
-              style={{ marginTop: 8 }}
             />
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          textAlign:'center', marginTop:40, fontSize:11, color:T.inkFaint,
-          fontFamily:T.serif, fontStyle:'italic', letterSpacing:'0.5px'
-        }}>
-          small steps, every day
-        </div>
+        <div className="footer serif">small steps, every day</div>
       </div>
 
-      {/* Confirm Delete Dialog */}
       {deleteTarget && (
         <ConfirmDialog
           title="Delete habit?"
@@ -352,7 +303,6 @@ export default function App() {
         />
       )}
 
-      {/* Toast */}
       {toast && <Toast key={toast.key} message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   )

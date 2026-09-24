@@ -15,13 +15,13 @@ export function getLast7Days() {
 }
 
 export function getDayLabel(dateStr) {
-  return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(dateStr + 'T00:00:00').getDay()]
+  return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][parseDateKey(dateStr).getDay()]
 }
 
 export function isScheduled(habit, dateKey) {
   const freq = habit.frequency || { type: 'daily' }
   if (!freq || freq.type === 'daily') return true
-  const day = new Date(dateKey + 'T00:00:00').getDay()
+  const day = parseDateKey(dateKey).getDay()
   return (freq.days || []).includes(day)
 }
 
@@ -41,29 +41,43 @@ export function calcStreak(habitId, completions, habit) {
   return streak
 }
 
+export function parseDateKey(key) {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
 export function calcBestStreak(habitId, completions, habit) {
-  const dates = Object.keys(completions[habitId] || {})
-    .filter(k => isScheduled(habit || {}, k))
-    .sort()
+  const done = completions[habitId] || {}
+  const dates = Object.keys(done).filter(k => done[k]).sort()
   if (dates.length === 0) return 0
-  let best = 1
-  let current = 1
-  for (let i = 1; i < dates.length; i++) {
-    const d1 = new Date(dates[i])
-    const d2 = new Date(dates[i - 1])
-    const rawDiff = (d1 - d2) / 86400000
-    let diff = rawDiff
-    for (let j = new Date(d2.getTime() + 86400000); j < d1; j = new Date(j.getTime() + 86400000)) {
-      if (isScheduled(habit || {}, j.toISOString().split('T')[0])) { diff = 1; break }
-    }
-    if (diff === 1) {
+  const todayKey = localDateKey(new Date())
+  let best = 0
+  let current = 0
+  for (let d = parseDateKey(dates[0]); ; d.setDate(d.getDate() + 1)) {
+    const key = localDateKey(d)
+    if (key > todayKey && key > dates[dates.length - 1]) break
+    if (!isScheduled(habit || {}, key)) continue
+    if (done[key]) {
       current++
       best = Math.max(best, current)
-    } else {
-      current = 1
+    } else if (key !== todayKey) {
+      current = 0
     }
   }
   return best
+}
+
+// Moves an item inside a subset of the list (e.g. a filtered view)
+// while keeping items outside the subset in their original slots.
+export function reorderSubset(list, subsetIds, activeId, overId) {
+  const subset = list.filter(x => subsetIds.includes(x.id))
+  const from = subset.findIndex(x => x.id === activeId)
+  const to = subset.findIndex(x => x.id === overId)
+  if (from < 0 || to < 0 || from === to) return list
+  const moved = [...subset]
+  moved.splice(to, 0, moved.splice(from, 1)[0])
+  let i = 0
+  return list.map(x => subsetIds.includes(x.id) ? moved[i++] : x)
 }
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',

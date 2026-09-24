@@ -11,12 +11,12 @@ export default defineConfig({
         name: 'Habit Tracker',
         short_name: 'Habits',
         description: 'Track your daily habits',
-        theme_color: '#6c63ff',
-        background_color: '#f7f7f5',
+        theme_color: '#C4653A',
+        background_color: '#FAF8F4',
         display: 'standalone',
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       }
     })

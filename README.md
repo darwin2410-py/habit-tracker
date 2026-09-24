@@ -1,16 +1,37 @@
-# React + Vite
+# Habit Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Simple habit tracker built with React, Vite and Supabase. Installable as a PWA.
 
-Currently, two official plugins are available:
+Features: daily and monthly view, custom frequency per habit, categories, streaks, dark mode, drag to reorder.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Setup
 
-## React Compiler
+```bash
+npm install
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Create `.env`:
 
-## Expanding the ESLint configuration
+```
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Supabase tables used:
+
+| Table | Columns |
+| --- | --- |
+| `habits` | `id`, `name`, `created_at`, `user_id`, `frequency` (json), `category_id`, `sort_order` |
+| `completions` | `habit_id`, `date_key`, `user_id` |
+| `categories` | `id`, `name`, `color`, `user_id` |
+
+If your `habits` table was created before drag to reorder was added, run `supabase/add_sort_order.sql` in the Supabase SQL editor.
+
+## Scripts
+
+```bash
+npm run dev     # start dev server
+npm run build   # production build
+npm run lint
+npm test        # run unit tests
+```
