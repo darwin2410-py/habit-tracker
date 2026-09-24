@@ -1,4 +1,4 @@
-import { T } from '../theme'
+import Chip from './Chip'
 
 const DAYS = [
   { v: 0, l: 'S' },
@@ -17,7 +17,7 @@ const OPTIONS = [
   { key: 'custom', label: 'Custom' },
 ]
 
-export default function FrequencyPicker({ frequency, onChange, style }) {
+export default function FrequencyPicker({ frequency, onChange, className = '' }) {
   const type = frequency?.type || 'daily'
   const days = frequency?.days || []
 
@@ -33,41 +33,17 @@ export default function FrequencyPicker({ frequency, onChange, style }) {
   }
 
   return (
-    <div style={{
-      background: T.card, borderRadius: T.radius, padding: 16,
-      boxShadow: T.shadow, ...style,
-    }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: type === 'custom' ? 12 : 0 }}>
-        {OPTIONS.map(o => {
-          const active = type === o.key
-          return (
-            <button key={o.key} onClick={() => selectType(o.key)} style={{
-              padding: '6px 14px', borderRadius: 99, border: '1.5px solid',
-              borderColor: active ? T.accent : T.creamDark,
-              background: active ? T.accent : 'transparent',
-              color: active ? '#fff' : T.inkSoft,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
-              transition: 'all 0.2s',
-            }}>{o.label}</button>
-          )
-        })}
+    <div className={`card panel ${className}`}>
+      <div className="chip-row">
+        {OPTIONS.map(o => (
+          <Chip key={o.key} active={type === o.key} onClick={() => selectType(o.key)}>{o.label}</Chip>
+        ))}
       </div>
       {type === 'custom' && (
-        <div style={{ display: 'flex', gap: 4 }}>
-          {DAYS.map(d => {
-            const active = days.includes(d.v)
-            return (
-              <button key={d.v} onClick={() => toggleDay(d.v)} style={{
-                width: 34, height: 34, borderRadius: 8,
-                border: '1.5px solid',
-                borderColor: active ? T.accent : T.creamDark,
-                background: active ? T.accent : 'transparent',
-                color: active ? '#fff' : T.inkSoft,
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: T.sans,
-                transition: 'all 0.2s',
-              }}>{d.l}</button>
-            )
-          })}
+        <div className="freq-days">
+          {DAYS.map(d => (
+            <Chip key={d.v} className="day-btn" active={days.includes(d.v)} onClick={() => toggleDay(d.v)}>{d.l}</Chip>
+          ))}
         </div>
       )}
     </div>
