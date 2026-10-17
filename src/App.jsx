@@ -13,7 +13,6 @@ import FrequencyPicker from './components/FrequencyPicker'
 import CategoryPicker from './components/CategoryPicker'
 import CategoryChips from './components/CategoryChips'
 
-const USER_ID = 'user_default'
 const UNDO_MS = 5000
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -29,7 +28,7 @@ function sortHabits(list) {
   return [...list].sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity))
 }
 
-export default function App() {
+export default function App({ userId }) {
   const { theme, toggle: toggleTheme } = useTheme()
   const [habits, setHabits] = useState([])
   const [completions, setCompletions] = useState({})
@@ -68,9 +67,9 @@ export default function App() {
   useEffect(() => {
     async function load() {
       const [{ data: h, error: e1 }, { data: c, error: e2 }, { data: cats, error: e3 }] = await Promise.all([
-        supabase.from('habits').select('*').eq('user_id', USER_ID),
-        supabase.from('completions').select('*').eq('user_id', USER_ID),
-        supabase.from('categories').select('*').eq('user_id', USER_ID)
+        supabase.from('habits').select('*').eq('user_id', userId),
+        supabase.from('completions').select('*').eq('user_id', userId),
+        supabase.from('categories').select('*').eq('user_id', userId)
       ])
       if (e1) console.error('habits error:', e1)
       if (e2) console.error('completions error:', e2)
@@ -88,14 +87,14 @@ export default function App() {
       setLoaded(true)
     }
     load()
-  }, [])
+  }, [userId])
 
   async function addHabit() {
     const name = newHabit.trim()
     if (!name) return
     const id = crypto.randomUUID()
     const sort_order = habits.reduce((max, h) => Math.max(max, h.sort_order ?? -1), -1) + 1
-    const habit = { id, name, created_at: today, user_id: USER_ID, frequency, category_id: categoryId, sort_order }
+    const habit = { id, name, created_at: today, user_id: userId, frequency, category_id: categoryId, sort_order }
     const { error } = await supabase.from('habits').insert(habit)
     if (error) { console.error('insert error:', error); showToast('Failed to add habit', 'error'); return }
     setHabits(h => [...h, habit])
@@ -184,7 +183,7 @@ export default function App() {
         setCompletions(c => ({ ...c, [habitId]: { ...(c[habitId]||{}), [dateKey]: true } }))
       }
     } else {
-      const { error } = await supabase.from('completions').insert({ habit_id: habitId, date_key: dateKey, user_id: USER_ID })
+      const { error } = await supabase.from('completions').insert({ habit_id: habitId, date_key: dateKey, user_id: userId })
       if (error) {
         console.error('toggle error:', error)
         showToast('Failed to update', 'error')
@@ -196,7 +195,7 @@ export default function App() {
 
   async function createCategory(name, color) {
     const id = 'cat_' + crypto.randomUUID()
-    const cat = { id, name, color, user_id: USER_ID }
+    const cat = { id, name, color, user_id: userId }
     const { error } = await supabase.from('categories').insert(cat)
     if (error) { console.error('category insert error:', error); showToast('Failed to create category', 'error'); return }
     setCategories(c => [...c, cat])
@@ -221,6 +220,11 @@ export default function App() {
       showToast('Failed to save order', 'error')
       setHabits(prev)
     }
+  }
+
+  async function signOut() {
+    await commitDelete()
+    await supabase.auth.signOut()
   }
 
   function startEdit(habitId, habitName, freq, catId) {
@@ -366,6 +370,7 @@ export default function App() {
         </DndContext>
 
         <div className="footer serif">small steps, every day</div>
+        <button className="signout-btn" onClick={signOut}>Sign out</button>
       </div>
 
       {toast && <Toast key={toast.key} message={toast.message} type={toast.type}
