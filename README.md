@@ -27,6 +27,8 @@ Supabase tables used:
 
 If your `habits` table was created before drag to reorder was added, run `supabase/add_sort_order.sql` in the Supabase SQL editor.
 
+Login uses Supabase Auth (email and password). In Supabase, add your app URL under Authentication > URL Configuration. Then sign up in the app and run `supabase/enable_auth.sql` (with your email filled in) to move old data to your account and turn on row level security.
+
 ## Scripts
 
 ```bash
