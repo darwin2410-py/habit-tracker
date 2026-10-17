@@ -11,6 +11,15 @@ alter table habits      enable row level security;
 alter table completions enable row level security;
 alter table categories  enable row level security;
 
+-- Old open policies from before login, they would keep everything public
+drop policy if exists "Select habits" on habits;
+drop policy if exists "Insert habits" on habits;
+drop policy if exists "Update habits" on habits;
+drop policy if exists "Delete habits" on habits;
+drop policy if exists "Select completions" on completions;
+drop policy if exists "Insert completions" on completions;
+drop policy if exists "Delete completions" on completions;
+
 drop policy if exists "own habits" on habits;
 drop policy if exists "own completions" on completions;
 drop policy if exists "own categories" on categories;
