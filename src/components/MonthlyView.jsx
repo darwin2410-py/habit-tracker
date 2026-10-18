@@ -138,7 +138,7 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
                   <div className="legend" aria-hidden="true">
                     Less
                     {[0, 25, 50, 75, 100].map(p => (
-                      <span key={p} style={{ background: `color-mix(in srgb, var(--sage) ${p}%, var(--cream))` }} />
+                      <span key={p} style={{ background: `color-mix(in srgb, var(--done) ${p}%, var(--fill))` }} />
                     ))}
                     More
                   </div>
