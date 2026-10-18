@@ -1,4 +1,4 @@
-const COLORS = ['#B4562E', '#3F6F53', '#D49B3A', '#4A90D9', '#E85D9E']
+const COLORS = ['#3B6FD4', '#3F6F53', '#D49B3A', '#4A90D9', '#E85D9E']
 
 // Pieces are created in an event handler (not during render) so render stays pure
 export function makeConfetti(count = 40) {

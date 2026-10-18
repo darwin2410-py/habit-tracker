@@ -1,8 +1,7 @@
 /* Liquid glass: frosted surfaces over a soft pastel mesh gradient.
    Only a handful of large surfaces blur what is behind them; small or
    repeated elements (chips, week cells, calendar days) use a plain
-   translucent fill. Same system as expense-tracker, with a terracotta
-   accent. */
+   translucent fill. Same system as expense-tracker. */
 
 *,
 *::before,
@@ -14,9 +13,9 @@
 
 :root {
   --bg: #EEF1F8;
-  --blob-1: #FFD3BA;
+  --blob-1: #B9D4FF;
   --blob-2: #BDEFD9;
-  --blob-3: #B9D4FF;
+  --blob-3: #FFD3BA;
   --blob-4: #D9C8FF;
   --ink: #1D1D24;
   --ink-soft: #55555F;
@@ -31,9 +30,9 @@
   --shadow: 0 8px 24px rgba(31, 38, 80, 0.08), 0 1px 2px rgba(31, 38, 80, 0.06);
   --shadow-sm: 0 2px 8px rgba(31, 38, 80, 0.06);
   --blur: blur(20px) saturate(160%);
-  --accent: #B4562E;
-  --accent-text: #9C4826;
-  --accent-soft: rgba(232, 132, 90, 0.24);
+  --accent: #3B6FD4;
+  --accent-text: #2D5CC0;
+  --accent-soft: rgba(74, 127, 224, 0.24);
   --on-accent: #FFFFFF;
   --done: #2E7D52;
   --on-done: #FFFFFF;
@@ -43,7 +42,7 @@
   --streak-soft: rgba(245, 184, 61, 0.24);
   --bad: #B4261E;
   --error-fill: rgba(255, 220, 220, 0.88);
-  --focus: #9C4826;
+  --focus: #2D5CC0;
   --overlay: rgba(15, 18, 34, 0.3);
 
   --radius: 16px;
@@ -54,10 +53,10 @@
 
 html[data-theme="dark"] {
   --bg: #0F1222;
-  --blob-1: #4A2A2E;
-  --blob-2: #173F48;
-  --blob-3: #26346E;
-  --blob-4: #3B2A6B;
+  --blob-1: #26346E;
+  --blob-2: #3B2A6B;
+  --blob-3: #173F48;
+  --blob-4: #45284D;
   --ink: #F4F4F8;
   --ink-soft: #C2C2CE;
   --glass: rgba(30, 30, 40, 0.5);
@@ -70,15 +69,15 @@ html[data-theme="dark"] {
   --track: rgba(255, 255, 255, 0.1);
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --accent-text: #F2A07A;
-  --accent-soft: rgba(232, 132, 90, 0.3);
+  --accent-text: #A9C4FF;
+  --accent-soft: rgba(74, 127, 224, 0.3);
   --good: #7BE0A8;
   --good-soft: rgba(52, 196, 124, 0.2);
   --streak-text: #F5C46A;
   --streak-soft: rgba(245, 184, 61, 0.18);
   --bad: #FFA8A0;
   --error-fill: rgba(90, 42, 46, 0.88);
-  --focus: #F2A07A;
+  --focus: #A9C4FF;
   --overlay: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
