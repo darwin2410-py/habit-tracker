@@ -45,29 +45,31 @@ body {
   --card: #FFFFFF;
   --ink: #2C2825;
   --inkSoft: #6B6560;
-  --inkMuted: #A8A29E;
+  --inkMuted: #78716B;
   --inkFaint: #D4D0CC;
   --cream: #F5F0E8;
   --creamDark: #EDE8DE;
-  --accent: #C4653A;
+  --accent: #B4562E;
   --accentLight: #F8EDE8;
-  --accentGlow: #E8845A;
-  --sage: #5B8C6F;
+  --accentGlow: #C4653A;
+  --sage: #3F6F53;
   --sageLight: #EDF5F0;
-  --sageDark: #4A7A5E;
+  --sageDark: #335C45;
   --amber: #D49B3A;
   --amberLight: #FDF6E8;
-  --danger: #C4533A;
+  --amberInk: #8F6119;
+  --danger: #B34A32;
   --dangerLight: #FDF0ED;
   --overlay: rgba(44, 40, 37, 0.4);
   --shadow: 0 1px 3px rgba(44, 40, 37, 0.04), 0 4px 12px rgba(44, 40, 37, 0.06);
   --shadowHover: 0 2px 8px rgba(44, 40, 37, 0.08), 0 8px 24px rgba(44, 40, 37, 0.1);
   --radius: 14px;
-  --accent-soft: rgba(196, 101, 58, 0.09);
-  --accent-shadow: rgba(196, 101, 58, 0.19);
-  --accent-glow: rgba(196, 101, 58, 0.25);
+  --accent-soft: rgba(180, 86, 46, 0.09);
+  --accent-shadow: rgba(180, 86, 46, 0.19);
+  --accent-glow: rgba(180, 86, 46, 0.25);
   --crem-radial: #EDE8DE;
   --dot-grid: 24px;
+  --onStrong: #FFFFFF;
 }
 
 html[data-theme="dark"] {
@@ -75,7 +77,7 @@ html[data-theme="dark"] {
   --card: #252220;
   --ink: #EDE8DE;
   --inkSoft: #B5AFA8;
-  --inkMuted: #8A847E;
+  --inkMuted: #9A948D;
   --inkFaint: #4A4540;
   --cream: #2D2925;
   --creamDark: #353130;
@@ -87,6 +89,7 @@ html[data-theme="dark"] {
   --sageDark: #5B9776;
   --amber: #E8B65A;
   --amberLight: #3A3320;
+  --amberInk: #E8B65A;
   --danger: #E0705A;
   --dangerLight: #3A2520;
   --overlay: rgba(0, 0, 0, 0.6);
@@ -96,6 +99,7 @@ html[data-theme="dark"] {
   --accent-shadow: rgba(232, 132, 90, 0.22);
   --accent-glow: rgba(232, 132, 90, 0.28);
   --crem-radial: #353130;
+  --onStrong: #1A1815;
 }
 /* Base */
 
@@ -196,7 +200,7 @@ button {
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--onStrong);
   transition: all 0.2s;
 }
 
@@ -260,14 +264,15 @@ button {
 }
 
 .chip.active {
-  background: var(--chip-color);
-  border-color: var(--chip-color);
-  color: #fff;
+  background: color-mix(in srgb, var(--chip-color) 16%, var(--card));
+  /* mixed toward the text colour so even light hues keep a 3:1 edge */
+  border-color: color-mix(in srgb, var(--chip-color) 70%, var(--ink));
+  color: var(--ink);
 }
 
 .chip.dashed {
   border-style: dashed;
-  border-color: var(--inkFaint);
+  border-color: var(--inkMuted);
   color: var(--inkMuted);
   font-weight: 500;
 }
@@ -278,8 +283,6 @@ button {
   border-radius: 50%;
   background: var(--chip-color);
 }
-
-.chip.active .chip-dot { background: #fff; }
 
 /* Inputs */
 
@@ -311,12 +314,10 @@ button {
 }
 
 .header-date {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: var(--inkMuted);
+  color: var(--inkSoft);
   margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
 }
 
 .header h1 {
@@ -349,11 +350,9 @@ button {
 }
 
 .progress-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--inkSoft);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .progress-count {
@@ -415,7 +414,7 @@ button {
 
 .add-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--onStrong);
   border: none;
   border-radius: 12px;
   padding: 13px 20px;
@@ -451,8 +450,8 @@ button {
 .footer {
   text-align: center;
   margin-top: 40px;
-  font-size: 11px;
-  color: var(--inkFaint);
+  font-size: 13px;
+  color: var(--inkMuted);
   font-style: italic;
   letter-spacing: 0.5px;
 }
@@ -476,8 +475,6 @@ button {
 .loading-text {
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
 }
 
 /* Frequency picker */
@@ -584,7 +581,7 @@ button {
   border-radius: 7px;
   border: 2px solid var(--inkFaint);
   background: transparent;
-  color: #fff;
+  color: var(--onStrong);
   font-size: 13px;
   display: flex;
   align-items: center;
@@ -654,7 +651,7 @@ button {
   letter-spacing: -0.2px;
 }
 
-.badge.streak { background: var(--amberLight); color: var(--amber); }
+.badge.streak { background: var(--amberLight); color: var(--amberInk); }
 .badge.best { background: var(--sageLight); color: var(--sage); }
 
 .badge.category {
@@ -687,7 +684,7 @@ button {
 .week-day.off { opacity: 0.3; }
 
 .week-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--inkMuted);
   margin-bottom: 4px;
   font-weight: 500;
@@ -830,6 +827,7 @@ button {
 
 .habit-tabs .chip.active {
   background: var(--accent);
+  color: var(--onStrong);
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
@@ -885,7 +883,7 @@ button {
 }
 
 .stat.sage { background: var(--sageLight); color: var(--sage); }
-.stat.amber { background: var(--amberLight); color: var(--amber); }
+.stat.amber { background: var(--amberLight); color: var(--amberInk); }
 .stat.accent { background: var(--accentLight); color: var(--accent); }
 
 .stat-value {
@@ -894,12 +892,10 @@ button {
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--inkMuted);
   margin-top: 2px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .cal-grid {
@@ -939,7 +935,7 @@ button {
 
 .cal-day.done {
   background: var(--sage);
-  color: #fff;
+  color: var(--onStrong);
 }
 
 .cal-day:disabled { cursor: default; }
@@ -1062,12 +1058,10 @@ button {
 /* Rest day group */
 
 .group-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--inkMuted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 24px 0 10px;
+  margin: 24px 4px 10px;
 }
 
 .habit-card.rest {
@@ -1089,7 +1083,7 @@ button {
   justify-content: center;
 }
 
-.week-cell.done { color: #fff; }
+.week-cell.done { color: var(--onStrong); }
 
 /* Toast action */
 
@@ -1119,7 +1113,7 @@ button {
   cursor: default;
 }
 
-.cal-day.heat.strong { color: #fff; }
+.cal-day.heat.strong { color: var(--onStrong); }
 .cal-day.heat.none { background: transparent; color: var(--inkFaint); }
 
 .legend {
@@ -1199,7 +1193,7 @@ button {
 
 .login-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--onStrong);
   border: none;
   border-radius: 10px;
   padding: 12px;
@@ -1243,4 +1237,93 @@ button {
   font-size: 12px;
   color: var(--inkMuted);
   text-decoration: underline;
+}
+
+/* Touch targets: at least 44px to tap. Small controls keep their look and
+   get a bigger invisible hit area instead. */
+
+.btn-outline { min-height: 44px; }
+.btn-theme { min-width: 44px; }
+
+.month-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.chip,
+.option-btn {
+  position: relative;
+  min-height: 34px;
+}
+
+.chip::after,
+.option-btn::after,
+.swatch::after,
+.menu-btn::after {
+  content: '';
+  position: absolute;
+  inset: -5px -2px;
+}
+
+.swatch {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.swatch::after { inset: -6px; }
+.new-category .chip-row { gap: 8px; }
+
+.menu-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.menu-btn::after { inset: -6px; }
+.menu-list button { min-height: 44px; }
+
+.link-btn {
+  padding: 14px 6px;
+  margin: -14px -6px;
+}
+
+.signout-btn {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.toast-action {
+  min-height: 44px;
+  margin: -12px 0;
+}
+
+.btn { min-height: 44px; }
+
+.new-category-row .input {
+  padding: 11px 12px;
+  font-size: 15px;
+}
+
+/* Keyboard focus */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.input:focus-visible,
+.habit-name-input:focus-visible { outline: none; }
+
+/* One entrance on load, nothing else moves on its own */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -8,7 +8,7 @@ import CategoryChips from './CategoryChips'
 import HabitMenu from './HabitMenu'
 
 export default function HabitCard({
-  habit, idx, completions, today, last7, rest,
+  habit, completions, today, last7, rest,
   editingId, editName, setEditName,
   editingFreq, setEditingFreq,
   editingCatId, setEditingCatId,
@@ -43,8 +43,7 @@ export default function HabitCard({
   return (
     <div ref={setNodeRef} className={`habit${isDragging ? ' dragging' : ''}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}>
-      <div className={`card habit-card fade-up${done ? ' done' : ''}${isEditing ? ' editing' : ''}${rest && !isEditing ? ' rest' : ''}`}
-        style={{ animationDelay: `${0.08 + idx * 0.05}s` }}>
+      <div className={`card habit-card${done ? ' done' : ''}${isEditing ? ' editing' : ''}${rest && !isEditing ? ' rest' : ''}`}>
         <div className="habit-top">
           <div className="habit-main">
             {!isEditing && (

@@ -96,7 +96,7 @@ export default function App({ userId }) {
     const sort_order = habits.reduce((max, h) => Math.max(max, h.sort_order ?? -1), -1) + 1
     const habit = { id, name, created_at: today, user_id: userId, frequency, category_id: categoryId, sort_order }
     const { error } = await supabase.from('habits').insert(habit)
-    if (error) { console.error('insert error:', error); showToast('Failed to add habit', 'error'); return }
+    if (error) { console.error('insert error:', error); showToast("Couldn't add the habit. Try again.", 'error'); return }
     setHabits(h => [...h, habit])
     setNewHabit('')
     setFrequency({ type: 'daily' })
@@ -116,7 +116,7 @@ export default function App({ userId }) {
     if (freqChanged) updates.frequency = editingFreq
     if (catChanged) updates.category_id = editingCatId
     const { error } = await supabase.from('habits').update(updates).eq('id', id)
-    if (error) { console.error('rename error:', error); showToast('Failed to save', 'error'); return }
+    if (error) { console.error('rename error:', error); showToast("Couldn't save. Try again.", 'error'); return }
     setHabits(hh => hh.map(x => x.id === id ? { ...x, ...updates } : x))
     setEditingId(null)
   }
@@ -157,7 +157,7 @@ export default function App({ userId }) {
     if (error) {
       console.error('delete error:', error)
       restoreHabit(pending)
-      showToast('Failed to delete', 'error')
+      showToast("Couldn't delete. Try again.", 'error')
     }
   }
 
@@ -178,7 +178,7 @@ export default function App({ userId }) {
       const { error } = await supabase.from('completions').delete().eq('habit_id', habitId).eq('date_key', dateKey)
       if (error) {
         console.error('toggle error:', error)
-        showToast('Failed to update', 'error')
+        showToast("Couldn't update. Try again.", 'error')
         // Rollback
         setCompletions(c => ({ ...c, [habitId]: { ...(c[habitId]||{}), [dateKey]: true } }))
       }
@@ -186,7 +186,7 @@ export default function App({ userId }) {
       const { error } = await supabase.from('completions').insert({ habit_id: habitId, date_key: dateKey, user_id: userId })
       if (error) {
         console.error('toggle error:', error)
-        showToast('Failed to update', 'error')
+        showToast("Couldn't update. Try again.", 'error')
         // Rollback
         setCompletions(c => ({ ...c, [habitId]: { ...(c[habitId]||{}), [dateKey]: false } }))
       }
@@ -197,7 +197,7 @@ export default function App({ userId }) {
     const id = 'cat_' + crypto.randomUUID()
     const cat = { id, name, color, user_id: userId }
     const { error } = await supabase.from('categories').insert(cat)
-    if (error) { console.error('category insert error:', error); showToast('Failed to create category', 'error'); return }
+    if (error) { console.error('category insert error:', error); showToast("Couldn't add the category. Try again.", 'error'); return }
     setCategories(c => [...c, cat])
     setCategoryId(id)
   }
@@ -217,7 +217,7 @@ export default function App({ userId }) {
     const failed = results.find(r => r.error)
     if (failed) {
       console.error('reorder error:', failed.error)
-      showToast('Failed to save order', 'error')
+      showToast("Couldn't save the new order. Try again.", 'error')
       setHabits(prev)
     }
   }
@@ -300,7 +300,7 @@ export default function App({ userId }) {
         )}
 
         {/* Add Habit */}
-        <div className="add-box fade-up" style={{ animationDelay: '0.1s' }}>
+        <div className="add-box">
           <div className="add-row">
             <input ref={inputRef} className="input add-input" value={newHabit}
               onChange={e => setNewHabit(e.target.value)}
@@ -338,22 +338,22 @@ export default function App({ userId }) {
 
         {/* Category filter */}
         {(categories.length > 0 || categoryFilter) && (
-          <div className="fade-up" style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16 }}>
             <CategoryChips categories={categories} selectedId={categoryFilter} onChange={setCategoryFilter} emptyLabel="All" />
           </div>
         )}
 
         {/* Habits List */}
         {habits.length === 0 && (
-          <div className="empty fade-up" style={{ animationDelay: '0.15s' }}>
+          <div className="empty">
             No habits yet. Add your first one above.
           </div>
         )}
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={dueHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-            {dueHabits.map((habit, idx) => (
-              <HabitCard key={habit.id} habit={habit} idx={idx} {...cardProps}
+            {dueHabits.map(habit => (
+              <HabitCard key={habit.id} habit={habit} {...cardProps}
                 onDelete={() => deleteHabit(habit)}
                 category={categories.find(c => c.id === habit.category_id) || null} />
             ))}
@@ -361,8 +361,8 @@ export default function App({ userId }) {
 
           {restHabits.length > 0 && <div className="group-label">Rest day</div>}
           <SortableContext items={restHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-            {restHabits.map((habit, idx) => (
-              <HabitCard key={habit.id} habit={habit} idx={dueHabits.length + idx} rest {...cardProps}
+            {restHabits.map(habit => (
+              <HabitCard key={habit.id} habit={habit} rest {...cardProps}
                 onDelete={() => deleteHabit(habit)}
                 category={categories.find(c => c.id === habit.category_id) || null} />
             ))}

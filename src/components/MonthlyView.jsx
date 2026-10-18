@@ -76,7 +76,7 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
           <div className="empty fade-up">No habits to show yet.</div>
         ) : (
           <>
-            <div className="chip-row habit-tabs fade-up" style={{ animationDelay: '0.1s' }}>
+            <div className="chip-row habit-tabs">
               <Chip active={isAll} onClick={() => setSelectedHabit(ALL)}>All habits</Chip>
               {habits.map(h => (
                 <Chip key={h.id} active={selectedHabit === h.id} onClick={() => setSelectedHabit(h.id)}>{h.name}</Chip>
@@ -84,7 +84,7 @@ export default function MonthlyView({ habits, completions, onToggle, onBack }) {
             </div>
 
             {selectedHabit && (
-              <div className="card calendar fade-up" style={{ animationDelay: '0.15s' }}>
+              <div className="card calendar fade-up" style={{ animationDelay: '0.05s' }}>
                 <div className="month-nav">
                   <button className="month-btn" onClick={prevMonth} aria-label="Previous month">&lsaquo;</button>
                   <span className="serif">{MONTHS[viewMonth]} {viewYear}</span>
